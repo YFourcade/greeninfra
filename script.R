@@ -117,7 +117,7 @@ ggplot() +
   scale_shape_discrete("Habitat type") +
   theme_bw()
 
-ggsave("nmds_plot.svg", width = 10, height = 8)
+ggsave("nmds_plot.svg", width = 12, height = 10)
 
 ### beta-diversity ###
 
