@@ -117,19 +117,11 @@ ggplot() +
   scale_shape_discrete("Habitat type") +
   theme_bw()
 
-ggsave("nmds_plot.svg", width = 12, height = 10)
+ggsave("nmds_plot.svg", width = 12, height = 5)
 
 ### beta-diversity ###
 
-data %>% group_by(Powerline, `Road Density`) %>% 
-  do(data.frame(beta.multi(. %>% dplyr::select(4,5) %>% spread(key = Species, value = n) %>% 
-                             mutate_all(function(x){ifelse(x == 0, 0, 1)})))) %>%
-  select(-beta.SOR) %>% gather(-1, -2, key = "beta", value = "value") %>%
-  ggplot(aes(y = value, x = Powerline)) + 
-  geom_bar(stat = "identity", aes(fill = beta)) + 
-  facet_grid(. ~ `Road Density`)
-
-
+# by habitat type
 beta.labs <- c("Turnover (beta.SIM)", "Nestedness (beta.SNE)", "Total (beta.SOR)")
 names(beta.labs) <- c("beta.SIM", "beta.SNE", "beta.SOR")
 
@@ -158,7 +150,43 @@ data %>% group_by(taxon, Transect_type) %>%
 
 ggsave("beta.div_plot.svg", width = 9, height = 7)
 
+# pairwise
+svg("cluster.svg", width = 12, height = 5)
 
+par(mfrow=c(1,3))
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      mutate(n = ifelse(n == 0, 0, 1)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Bumblebees",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Butterflies") %>% 
+                 group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                 mutate(n = ifelse(n == 0, 0, 1)) %>%
+                 spread(key = Species, value = n) %>% 
+                 column_to_rownames("Transect_type")),
+       method="single"),
+     main = "Butterflies",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Plants") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      mutate(n = ifelse(n == 0, 0, 1)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Plants",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+dev.off()
 
 #######################
 ## clean environment ##

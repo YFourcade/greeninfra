@@ -10,9 +10,13 @@ Below is a plot of a Non-metric multidimensional scaling analysis (NMDS) showing
 ![NMDS](nmds_plot.svg)
 
 
-Beta-diversity appears consistently lower in powerline habitats and higher in road habitats and pastures, while beta-diversity was at an intermediate level in between-fields habitats.
+Beta-diversity appears consistently lower in powerline habitats and higher in road habitats and pastures, while beta-diversity is at an intermediate level in between-fields habitats.
 
-Partitionning of beta-diversity reveals that patterns of beta-diversity are mostly driven by species turnover between habitat types.
+Partitioning of beta-diversity reveals that patterns of beta-diversity are mostly driven by species turnover between habitat types.
 
 ![Beta](beta.div_plot.svg)
 
+
+Pairwise distance shows that between-fields habitats have the most unique species composition while pasture and small road habitats are consistently very similar.
+
+![Cluster](cluster.svg)
