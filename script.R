@@ -20,7 +20,7 @@ data <- data_BB %>% left_join(sites)
 
 ### test effect of habitat types ###
 
-### NDMS ###
+### NMDS ###
 data.perm <- data %>% ungroup %>% filter(rowSums(.[,-c(1:2, 23:29)]) > 0)
 
 nmds <- metaMDS(data.perm[,-c(1:2, 23:29)], trymax = 10000, maxit = 20000)
@@ -76,7 +76,7 @@ ggplot() +
   coord_equal() +
   theme_bw()
 
-ggsave("ndms_plot.svg")
+ggsave("nmds_plot.svg")
 
 ### beta-diversity ###
 
