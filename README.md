@@ -14,5 +14,5 @@ In accordance with the visual inspection of the NMDS, beta-diversity appears cle
 
 Partitionning of beta-diversity reveals that both road habitats (small and big roads) were characterised by a larger nestedness of communities, i.e. community composition in species-poor sites is a subset of the species found in the species-rich sites.
 
-![Beta](beta_plot.svg)
+![Beta](beta.div_plot.svg)
 
