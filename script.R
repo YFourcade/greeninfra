@@ -31,7 +31,12 @@ nmds.scores <- as.data.frame(scores(nmds))
 nmds.scores$site <- rownames(nmds.scores)
 nmds.scores$road <- data.perm$`Road Density`
 nmds.scores$power <- data.perm$Powerline
-nmds.scores$habitat <- data.perm$Transect_type
+nmds.scores$habitat <- factor(data.perm$Transect_type, levels = c("Powerline",
+                                                                  "Between fields",
+                                                                  "Pasture",
+                                                                  "Small road",
+                                                                  "Big road"))
+
 
 species.scores <- as.data.frame(scores(nmds, "species"))
 species.scores$species <- rownames(species.scores)
@@ -68,15 +73,25 @@ hull.habitat <- rbind(hull.habitat, habitat.3)
 hull.habitat <- rbind(hull.habitat, habitat.4) 
 hull.habitat <- rbind(hull.habitat, habitat.5) 
 
+hull.habitat$habitat <- factor(hull.habitat$habitat, levels = c("Powerline",
+                                                                  "Between fields",
+                                                                  "Pasture",
+                                                                  "Small road",
+                                                                  "Big road"))
+
+
 # plots
 ggplot() + 
-  geom_polygon(data=hull.habitat,aes(x=NMDS1,y=NMDS2,fill=habitat ,group=habitat ),alpha=0.30) + # add the convex hulls
-  geom_point(data=nmds.scores,aes(x=NMDS1,y=NMDS2,shape=habitat,colour=habitat),size=4) + # add the point markers
-  geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5) +  # add the species labels
+  geom_polygon(data=hull.habitat,aes(x=NMDS1,y=NMDS2,fill=habitat ,group=habitat ),alpha=0.25) + # add the convex hulls
+  geom_point(data=nmds.scores,aes(x=NMDS1,y=NMDS2,shape=habitat,colour=habitat),size=3) + # add the point markers
+  geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
   coord_equal() +
+  scale_color_discrete("Habitat type") +
+  scale_fill_discrete("Habitat type") +
+  scale_shape_discrete("Habitat type") +
   theme_bw()
 
-ggsave("nmds_plot.svg")
+ggsave("nmds_plot.svg", width = 6, height = 4.5, dpi = 600)
 
 ### beta-diversity ###
 
@@ -108,4 +123,4 @@ data %>% group_by(Transect_type) %>%
   theme_classic() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggsave("beta.div_plot.svg", width = 8, height = 4.5)
+ggsave("beta.div_plot.svg", width = 8, height = 4)
