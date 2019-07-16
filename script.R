@@ -109,7 +109,7 @@ ggplot() +
                aes(x=NMDS1,y=NMDS2,fill=habitat ,group=habitat ),alpha=0.25) + # add the convex hulls
   # geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
   geom_point(data=ndms.plots[ndms.plots$what == "scores",],
-             aes(x=NMDS1,y=NMDS2,shape=habitat,colour=habitat),size=3) + # add the point markers
+             aes(x=NMDS1,y=NMDS2,shape=habitat,colour=habitat),size=1) + # add the point markers
   facet_grid(~ taxon) +
   coord_equal() +
   scale_color_discrete("Habitat type") +
@@ -117,12 +117,13 @@ ggplot() +
   scale_shape_discrete("Habitat type") +
   theme_bw()
 
-ggsave("nmds_plot.svg", width = 12, height = 5)
+ggsave("nmds_plot.svg", width = 10, height = 8)
 
 ### beta-diversity ###
 
 data %>% group_by(Powerline, `Road Density`) %>% 
-  do(data.frame(beta.multi(.[,-c(1:2, 23:29)] %>% mutate_all(function(x){ifelse(x == 0, 0, 1)})))) %>%
+  do(data.frame(beta.multi(. %>% dplyr::select(4,5) %>% spread(key = Species, value = n) %>% 
+                             mutate_all(function(x){ifelse(x == 0, 0, 1)})))) %>%
   select(-beta.SOR) %>% gather(-1, -2, key = "beta", value = "value") %>%
   ggplot(aes(y = value, x = Powerline)) + 
   geom_bar(stat = "identity", aes(fill = beta)) + 
@@ -132,24 +133,30 @@ data %>% group_by(Powerline, `Road Density`) %>%
 beta.labs <- c("Turnover (beta.SIM)", "Nestedness (beta.SNE)", "Total (beta.SOR)")
 names(beta.labs) <- c("beta.SIM", "beta.SNE", "beta.SOR")
 
+extract_beta <- function(x){
+  y <- x %>% ungroup %>% spread(key = Species, value = n) %>% 
+    mutate_all(function(x){ifelse(x == 0, 0, 1)})
+  b <- beta.multi(y[,-c(1:10)])
+  return(as.data.frame(b))
+}
 
-data %>% group_by(Transect_type) %>% 
-  do(data.frame(beta.multi(.[,-c(1:2, 23:29)] %>% mutate_all(function(x){ifelse(x == 0, 0, 1)})))) %>%
+data %>% group_by(taxon, Transect_type) %>% 
+  do(extract_beta(.)) %>%
   ungroup %>%
   mutate(Transect_type = fct_reorder(Transect_type, beta.SOR)) %>% 
-  gather(-1, key = "beta", value = "value") %>% 
+  gather(-1, -2, key = "beta", value = "value") %>% 
   mutate(beta = factor(beta, levels = c("beta.SOR", "beta.SIM", "beta.SNE"))) %>%
   ggplot(aes(y = value, x = Transect_type, color = Transect_type)) + 
   geom_point(size = 4) + 
-  facet_wrap(~beta, scales = "free", 
+  facet_grid(beta~taxon, scales = "free", 
              labeller = labeller(beta = beta.labs)) +
   scale_x_discrete("") + 
   scale_y_continuous("Beta-diversity") + 
   scale_color_discrete("Habitat type") +
-  theme_classic() + 
+  theme_bw() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggsave("beta.div_plot.svg", width = 8, height = 4)
+ggsave("beta.div_plot.svg", width = 9, height = 7)
 
 
 
