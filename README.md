@@ -3,7 +3,7 @@ Project about community (dis)similarity in Swedish green infrastructures
 
 Comparison of bumblebee, butterfly and plant communities in different habitat types depending on the presence of green infrastructures (powerlines, roads) and on the amount of grassland in the surrounding landscape. 
 
-### Preliminary results
+## Preliminary results
 
 Below is a plot of a Non-metric multidimensional scaling analysis (NMDS) showing differences in community composition between different habitats:
 
