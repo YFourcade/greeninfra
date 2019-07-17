@@ -40,20 +40,11 @@ Interestingly, the pattern is consistent across the three taxa sampled:
 This is confirm by the significant interaction between **powerline** presence and **road density** in a linear model with between-habitat beta-diversity as explanatory variable.
 
 
-|        &nbsp;                 | Estimate   |Std. Error   |t value   |Pr(>|t|)  
-|-------------------------------|------------|-------------|----------|-------------
-|*(Intercept)*                  | 0.3529     |0.02014      |17.53     |**2.213e-06** 
-|*Powerline [Yes]*              | 0.0441     |0.02325      |1.897     |0.1067   
-|*Road Density [Low]*           | 0.04295    |0.02325      |1.847     |0.1142   
-|*taxon [Butterflies]*          | 0.1039     |0.02014      |5.158     |**0.002098**  
-|*taxon [Plants]*               | 0.1885     |0.02014      |9.36      |**8.434e-05** 
-|*Powerline x Road density*     | -0.123     |0.03288      |-3.74     |**0.009621**  
-
-
---------------------------------------------------------------
- Observations   Residual Std. Error   $R^2$    Adjusted $R^2$ 
--------------- --------------------- -------- ----------------
-      12              0.02848         0.9456       0.9003     
---------------------------------------------------------------
-
-Table: Fitting linear model: beta.SOR ~ Powerline * Road Density + taxon
+|        &nbsp;                 | Estimate   |Std. Error   |t value   |P-value      |
+|-------------------------------|------------|-------------|----------|-------------|
+|*(Intercept)*                  | 0.3529     |0.02014      |17.53     |**2.213e-06**|
+|*Powerline [Yes]*              | 0.0441     |0.02325      |1.897     |0.1067       |
+|*Road Density [Low]*           | 0.04295    |0.02325      |1.847     |0.1142       |
+|*taxon [Butterflies]*          | 0.1039     |0.02014      |5.158     |**0.002098** |
+|*taxon [Plants]*               | 0.1885     |0.02014      |9.36      |**8.434e-05**|
+|*Powerline x Road density*     | -0.123     |0.03288      |-3.74     |**0.009621** |
