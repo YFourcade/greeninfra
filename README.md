@@ -39,6 +39,7 @@ Interestingly, the pattern is consistent across the three taxa sampled:
 
 This is confirm by the significant interaction between **powerline** presence and **road density** in a linear model with between-habitat beta-diversity as explanatory variable.
 
+
 |        &nbsp;                 | Estimate   |Std. Error   |t value   |Pr(>|t|)  
 |-------------------------------|------------|-------------|----------|-------------
 |*(Intercept)*                  | 0.3529     |0.02014      |17.53     |**2.213e-06** 
@@ -47,6 +48,7 @@ This is confirm by the significant interaction between **powerline** presence an
 |*taxon [Butterflies]*          | 0.1039     |0.02014      |5.158     |**0.002098**  
 |*taxon [Plants]*               | 0.1885     |0.02014      |9.36      |**8.434e-05** 
 |*Powerline x Road density*     | -0.123     |0.03288      |-3.74     |**0.009621**  
+
 
 --------------------------------------------------------------
  Observations   Residual Std. Error   $R^2$    Adjusted $R^2$ 
