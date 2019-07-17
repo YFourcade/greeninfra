@@ -39,7 +39,7 @@ Interestingly, the pattern is consistent across the three taxa sampled:
 
 This is confirm by the significant interaction between **powerline** presence and **road density** in a linear model with between-habitat beta-diversity as explanatory variable.
 
-
+ 
 |        &nbsp;                 | Estimate   |Std. Error   |t value   |P-value      |
 |-------------------------------|------------|-------------|----------|-------------|
 |*(Intercept)*                  | 0.3529     |0.02014      |17.53     |**2.213e-06**|
