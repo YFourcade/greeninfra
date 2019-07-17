@@ -212,7 +212,7 @@ extract_beta <- function(x){
   b <- beta.multi(y[,-c(1:10)])
   return(as.data.frame(b))
 }
-
+ 
 
 beta.by.landscape <- 
   data %>% group_by(Transect_type, `Landscape type`, Species) %>% 
