@@ -42,66 +42,66 @@ data <- bind_rows("Bumblebees" = data_BB, "Butterflies" = data_But, "Plants" = d
 ### NMDS ###
 ndms.plots <- c()
 for(i in unique(data$taxon)){
-    data.nmds <- data %>% filter(taxon == i) %>% ungroup %>% 
-      dplyr::select(2:8) %>%
-      spread(key = Species, value = n) %>%
-      filter(rowSums(.[,-c(1:5)]) > 0)
-    
-    nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 10000, maxit = 20000)
-    
-    # plot #
-    # prepare scores
-    nmds.scores <- as.data.frame(scores(nmds))
-    nmds.scores$site <- rownames(nmds.scores)
-    nmds.scores$road <- data.nmds$`Road Density`
-    nmds.scores$power <- data.nmds$Powerline
-    nmds.scores$habitat <- factor(data.nmds$Transect_type, levels = c("Powerline",
-                                                                      "Between fields",
-                                                                      "Pasture",
-                                                                      "Small road",
-                                                                      "Big road"))
-    
-    
-    # species.scores <- as.data.frame(scores(nmds, "species"))
-    # species.scores$species <- rownames(species.scores)
-    
-    # create hull polygons
-    
-    # habitat
-    habitat.1 <- nmds.scores[nmds.scores$habitat == 
-                               "Between fields", ][chull(nmds.scores[nmds.scores$habitat == 
-                                                                       "Between fields", c("NMDS1", "NMDS2")]), ] 
-    habitat.2 <- nmds.scores[nmds.scores$habitat == 
-                               "Big road", ][chull(nmds.scores[nmds.scores$habitat == 
-                                                                 "Big road", c("NMDS1", "NMDS2")]), ]
-    habitat.3 <- nmds.scores[nmds.scores$habitat == 
-                               "Pasture", ][chull(nmds.scores[nmds.scores$habitat == 
-                                                                "Pasture", c("NMDS1", "NMDS2")]), ] 
-    habitat.4 <- nmds.scores[nmds.scores$habitat == 
-                               "Powerline", ][chull(nmds.scores[nmds.scores$habitat == 
-                                                                  "Powerline", c("NMDS1", "NMDS2")]), ] 
-    habitat.5 <- nmds.scores[nmds.scores$habitat == 
-                               "Small road", ][chull(nmds.scores[nmds.scores$habitat == 
-                                                                   "Small road", c("NMDS1", "NMDS2")]), ] 
-    hull.habitat <- rbind(habitat.1, habitat.2) 
-    hull.habitat <- rbind(hull.habitat, habitat.3) 
-    hull.habitat <- rbind(hull.habitat, habitat.4) 
-    hull.habitat <- rbind(hull.habitat, habitat.5) 
-    
-    hull.habitat$habitat <- factor(hull.habitat$habitat, levels = c("Powerline",
+  data.nmds <- data %>% filter(taxon == i) %>% ungroup %>% 
+    dplyr::select(2:8) %>%
+    spread(key = Species, value = n) %>%
+    filter(rowSums(.[,-c(1:5)]) > 0)
+  
+  nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 10000, maxit = 20000)
+  
+  # plot #
+  # prepare scores
+  nmds.scores <- as.data.frame(scores(nmds))
+  nmds.scores$site <- rownames(nmds.scores)
+  nmds.scores$road <- data.nmds$`Road Density`
+  nmds.scores$power <- data.nmds$Powerline
+  nmds.scores$habitat <- factor(data.nmds$Transect_type, levels = c("Powerline",
                                                                     "Between fields",
                                                                     "Pasture",
                                                                     "Small road",
                                                                     "Big road"))
-    
-    
-    ndms.plots <- rbind.data.frame(ndms.plots, 
-                                   cbind.data.frame(taxon = i,
-                                   rbind.data.frame(cbind.data.frame(what = "hull", hull.habitat),
-                                                    cbind.data.frame(what = "scores", nmds.scores)
-                                                    )
-                                   )
-    )
+  
+  
+  # species.scores <- as.data.frame(scores(nmds, "species"))
+  # species.scores$species <- rownames(species.scores)
+  
+  # create hull polygons
+  
+  # habitat
+  habitat.1 <- nmds.scores[nmds.scores$habitat == 
+                             "Between fields", ][chull(nmds.scores[nmds.scores$habitat == 
+                                                                     "Between fields", c("NMDS1", "NMDS2")]), ] 
+  habitat.2 <- nmds.scores[nmds.scores$habitat == 
+                             "Big road", ][chull(nmds.scores[nmds.scores$habitat == 
+                                                               "Big road", c("NMDS1", "NMDS2")]), ]
+  habitat.3 <- nmds.scores[nmds.scores$habitat == 
+                             "Pasture", ][chull(nmds.scores[nmds.scores$habitat == 
+                                                              "Pasture", c("NMDS1", "NMDS2")]), ] 
+  habitat.4 <- nmds.scores[nmds.scores$habitat == 
+                             "Powerline", ][chull(nmds.scores[nmds.scores$habitat == 
+                                                                "Powerline", c("NMDS1", "NMDS2")]), ] 
+  habitat.5 <- nmds.scores[nmds.scores$habitat == 
+                             "Small road", ][chull(nmds.scores[nmds.scores$habitat == 
+                                                                 "Small road", c("NMDS1", "NMDS2")]), ] 
+  hull.habitat <- rbind(habitat.1, habitat.2) 
+  hull.habitat <- rbind(hull.habitat, habitat.3) 
+  hull.habitat <- rbind(hull.habitat, habitat.4) 
+  hull.habitat <- rbind(hull.habitat, habitat.5) 
+  
+  hull.habitat$habitat <- factor(hull.habitat$habitat, levels = c("Powerline",
+                                                                  "Between fields",
+                                                                  "Pasture",
+                                                                  "Small road",
+                                                                  "Big road"))
+  
+  
+  ndms.plots <- rbind.data.frame(ndms.plots, 
+                                 cbind.data.frame(taxon = i,
+                                                  rbind.data.frame(cbind.data.frame(what = "hull", hull.habitat),
+                                                                   cbind.data.frame(what = "scores", nmds.scores)
+                                                  )
+                                 )
+  )
 }
 
 ggplot() + 
@@ -166,11 +166,11 @@ plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees") %>%
 
 
 plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Butterflies") %>% 
-                 group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                 mutate(n = ifelse(n == 0, 0, 1)) %>%
-                 spread(key = Species, value = n) %>% 
-                 column_to_rownames("Transect_type")),
-       method="single"),
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      mutate(n = ifelse(n == 0, 0, 1)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
      main = "Butterflies",
      ylab = "Bray–Curtis distance",
      sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
@@ -188,11 +188,66 @@ plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Plants") %>%
 
 dev.off()
 
+
+### test effect of green infra ###
+# permanova
+permanova.list <- vector("list", 3)
+n = 0
+for(i in unique(data$taxon)){
+  n = n + 1
+  data.nmds <- data %>% filter(taxon == i) %>% ungroup %>% 
+    dplyr::select(2:8) %>%
+    spread(key = Species, value = n) %>%
+    filter(rowSums(.[,-c(1:5)]) > 0)
+  
+  permanova <- adonis(data.nmds[,-c(1:5)] ~ Powerline * `Road Density` * Transect_type, data = data.nmds)
+  permanova.list[[n]] <- permanova
+}
+names(permanova.list) <- unique(data$taxon)
+
+# beta diversity between habitat types depending on powerline and road density
+extract_beta <- function(x){
+  y <- x %>% ungroup %>% spread(key = Species, value = n) %>% 
+    mutate_all(function(x){ifelse(x == 0, 0, 1)})
+  b <- beta.multi(y[,-c(1:10)])
+  return(as.data.frame(b))
+}
+
+
+beta.by.landscape <- 
+  data %>% group_by(Transect_type, `Landscape type`, Species) %>% 
+  summarise(n = sum(n),
+            taxon = unique(taxon), 
+            Landscape = NA,
+            `Road Density` = unique(`Road Density`),
+            Powerline  = unique(Powerline),
+            Forest = NA,
+            Arable = NA,
+            Grasslands = NA,
+            Roads = NA) %>%
+  group_by(taxon, Powerline, `Road Density`) %>% 
+  do(extract_beta(.))
+
+ggplot(beta.by.landscape, aes(y = beta.SOR, x = Powerline, color = `Road Density`)) + 
+  geom_point(size = 3) +
+  geom_line(aes(group = `Road Density`)) +
+  facet_grid(~ taxon, scale = "free") +
+  scale_y_continuous("Total beta-diversity (beta.SOR)") +
+  theme_bw()
+
+ggsave("beta.by.landscape_plot.svg", width = 8, height = 3.5)
+
+test.beta.by.landscape <- lm(beta.SOR ~ Powerline*`Road Density` + taxon, data = beta.by.landscape)
+summary(test.beta.by.landscape)
+
+
+
 #######################
 ## clean environment ##
 #######################
 gdata::keep(data, 
             ndms.plots,
+            beta.by.landscape,
             sure = T)
 
 
