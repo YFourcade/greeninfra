@@ -1,6 +1,7 @@
 library(tidyverse)
 library(vegan)
 library(betapart)
+library(emmeans)
 
 ### import data ###
 
@@ -195,7 +196,7 @@ permanova.list <- vector("list", 3)
 n = 0
 for(i in unique(data$taxon)){
   n = n + 1
-  data.nmds <- data %>% filter(taxon == i) %>% ungroup %>% 
+  data.nmds <- data %>% filter(taxon == i, Transect_type != "Powerline") %>% ungroup %>% 
     dplyr::select(2:8) %>%
     spread(key = Species, value = n) %>%
     filter(rowSums(.[,-c(1:5)]) > 0)
@@ -215,32 +216,33 @@ extract_beta <- function(x){
  
 
 beta.by.landscape <- 
-  data %>% group_by(Transect_type, `Landscape type`, Species) %>% 
+  data %>% filter(Transect_type != "Powerline") %>% rename(Road_density = `Road Density`) %>%
+  group_by(Transect_type, `Landscape type`, Species) %>% 
   summarise(n = sum(n),
             taxon = unique(taxon), 
             Landscape = NA,
-            `Road Density` = unique(`Road Density`),
+            Road_density = unique(Road_density),
             Powerline  = unique(Powerline),
             Forest = NA,
             Arable = NA,
             Grasslands = NA,
             Roads = NA) %>%
-  group_by(taxon, Powerline, `Road Density`) %>% 
+  group_by(taxon, Powerline, Road_density) %>% 
   do(extract_beta(.))
 
-ggplot(beta.by.landscape, aes(y = beta.SOR, x = Powerline, color = `Road Density`)) + 
+ggplot(beta.by.landscape, aes(y = beta.SOR, x = Powerline, color = Road_density)) + 
   geom_point(size = 3) +
-  geom_line(aes(group = `Road Density`)) +
+  geom_line(aes(group = Road_density)) +
   facet_grid(~ taxon, scale = "free") +
   scale_y_continuous("Total beta-diversity (beta.SOR)") +
   theme_bw()
 
 ggsave("beta.by.landscape_plot.svg", width = 8, height = 3.5)
 
-test.beta.by.landscape <- lm(beta.SOR ~ Powerline*`Road Density` + taxon, data = beta.by.landscape)
+test.beta.by.landscape <- lm(beta.SOR ~ Powerline * Road_density + taxon, data = beta.by.landscape)
 summary(test.beta.by.landscape)
 
-
+pairs(emmeans(test.beta.by.landscape, ~  Powerline | Road_density))
 
 #######################
 ## clean environment ##

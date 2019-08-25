@@ -30,8 +30,7 @@ Differences in community composition between habitats (beta-diversity) appear to
 
 Interestingly, the pattern is consistent across the three taxa sampled: 
 
-* In landscapes of **high** road density, beta-diversity is increased with the presence of powerlines, i.e. habitats are composed of more different species compared to landscapes with no powerlines
-* In landscapes of **low** road density, beta-diversity is decreased with the presence of powerlines, i.e. habitats are composed of more similar species compared to landscapes with no powerlines
+Beta-diversity is reduced with the presence of powerlines, but only in landscapes with low road density.
 
 
 ![beta.by.landscape_plot](beta.by.landscape_plot.svg)
@@ -42,9 +41,9 @@ This is confirm by the significant interaction between **powerline** presence an
  
 |        &nbsp;                 | Estimate   |Std. Error   |t value   |P-value      |
 |-------------------------------|------------|-------------|----------|-------------|
-|*(Intercept)*                  | 0.3529     |0.02014      |17.53     |**2.213e-06**|
-|*Powerline [Yes]*              | 0.0441     |0.02325      |1.897     |0.1067       |
-|*Road Density [Low]*           | 0.04295    |0.02325      |1.847     |0.1142       |
-|*taxon [Butterflies]*          | 0.1039     |0.02014      |5.158     |**0.002098** |
-|*taxon [Plants]*               | 0.1885     |0.02014      |9.36      |**8.434e-05**|
-|*Powerline x Road density*     | -0.123     |0.03288      |-3.74     |**0.009621** |
+|*(Intercept)*                  | 0.3529     |0.02014      |17.53     |**1.41e-06** |
+|*Powerline [Yes]*              | 0.0441     |0.02325      |1.897     |0.560514     |
+|*Road Density [Low]*           | 0.04295    |0.02325      |1.847     |0.839282     |
+|*taxon [Butterflies]*          | 0.1039     |0.02014      |5.158     |**0.000411** |
+|*taxon [Plants]*               | 0.1885     |0.02014      |9.36      |**3.76e-05** |
+|*Powerline x Road density*     | -0.123     |0.03288      |-3.74     |**0.013734** |
