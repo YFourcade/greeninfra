@@ -5,45 +5,40 @@ Comparison of bumblebee, butterfly and plant communities in different habitat ty
 
 ## Preliminary results
 
-### Differences in community composition between habitat types
+### Species diversity
+
+Overall, there were differences in species diversity between taxa, both in terms of raw species richness (*F*~2,391~ = 303.83, *P* < 0.001) and using the Shannon index of diversity (*F*~2,391~ = 341.09, *P* < 0.001) (Fig. 1).
+
+Specifically, the sampling plots had a higher species diversity of plants (Mean species richness per transect = 16.7, Mean Shannon index per transect = 2.62) than butterflies (Mean species richness per transect = 8.65, Mean Shannon index per transect = 1.64), and a higher species diversity of butterflies than bumblebees (Mean species richness per transect = 4.22, Mean Shannon index per transect = 1.09).
+
+There were differences in species diversity (expressed as Shannon index) between the different habitat types for both plants (*F*~4,127~ = 11.79, *P* < 0.001) and butterflies (*F*~4,128~ = 6.45, *P* < 0.001) but not for bumblebees (*F*~4,128~ = 2.01, *P* = 0.097).
+
+![Fig. 1](shannon_plot.svg)
+
+
+### Community composition
+
 
 Below is a plot of a Non-metric multidimensional scaling analysis (NMDS) showing the overlap / differences in community composition between different habitats:
 
-![NMDS](nmds_plot.svg)
+![Fig. 2](nmds_plot.svg)
 
+
+Pairwise distances show that between-fields habitats have the most unique species composition while pasture and small road habitats are consistently very similar.
+
+![Fig. 3](cluster.svg)
+
+### Beta diversity
 
 Beta-diversity appears consistently lower in powerline habitats and higher in road habitats and pastures, while beta-diversity is at an intermediate level in between-fields habitats (field margins).
 
 Partitioning of beta-diversity reveals that patterns of beta-diversity are mostly driven by species turnover between habitat types.
 
-![Beta](beta.div_plot.svg)
+
+![Fig. 4](beta.div_plot.svg)
 
 
-Pairwise distances show that between-fields habitats have the most unique species composition while pasture and small road habitats are consistently very similar.
 
-![Cluster](cluster.svg)
+### Influence of powerlines and road density 
 
-
-### Influence of powerlines and road density on beta-diversity between habitat types 
-# 
-# Differences in community composition between habitats (beta-diversity) appear to be influenced by both the presence of powerlines and the density of roads in the landscape.
-# 
-# Interestingly, the pattern is consistent across the three taxa sampled: 
-# 
-# Beta-diversity is reduced with the presence of powerlines, but only in landscapes with low road density.
-# 
-# 
-# ![beta.by.landscape_plot](beta.by.landscape_plot.svg)
-# 
-# 
-# This is confirm by the significant interaction between **powerline** presence and **road density** in a linear model with between-habitat beta-diversity as explanatory variable.
-# 
-#  
-# |        &nbsp;                 | Estimate   |Std. Error   |t value   |P-value      |
-# |-------------------------------|------------|-------------|----------|-------------|
-# |*(Intercept)*                  | 0.3529     |0.02014      |17.53     |**1.41e-06** |
-# |*Powerline [Yes]*              | 0.0441     |0.02325      |1.897     |0.560514     |
-# |*Road Density [Low]*           | 0.04295    |0.02325      |1.847     |0.839282     |
-# |*taxon [Butterflies]*          | 0.1039     |0.02014      |5.158     |**0.000411** |
-# |*taxon [Plants]*               | 0.1885     |0.02014      |9.36      |**3.76e-05** |
-# |*Powerline x Road density*     | -0.123     |0.03288      |-3.74     |**0.013734** |
+![Fig. 5](beta.by.landscape_plot.svg)

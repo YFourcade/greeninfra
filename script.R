@@ -42,16 +42,33 @@ data <- bind_rows("Bumblebees" = data_BB, "Butterflies" = data_But, "Plants" = d
 
 ### test effect of habitat types ###
 
+## Diversity ##
+# species richness
+data %>% group_by(Transect_type, taxon, Landscape) %>% 
+  summarise(n = length(unique(Species[n > 0]))) %>%
+  group_by(taxon) %>% summarise(mean_SR = mean(n))
 
-# Diversity #
+anov.sr <- lme4::lmer(n ~ taxon + (1|Transect_type), 
+                       data = data %>% group_by(Transect_type, taxon, Landscape) %>% 
+                        summarise(n = length(unique(Species[n > 0]))))
+car::Anova(anov.sr, test.statistic = "F")
+
+pairs(emmeans(anov.sr, ~ taxon))
+
+
+# Shanon index
 extract_shannon <- function(x){
   y <- x %>% ungroup %>% spread(key = Species, value = n)
   shannon <- diversity(y[,-c(1:10)])
-  return(as.data.frame(shannon))
+  return(cbind.data.frame(y[,2:3],shannon = shannon))
 }
 
-data %>% group_by(Transect_type, taxon, Landscape) %>% 
-  filter(n > 0) %>% do(extract_shannon(.)) %>%
+dat.shannon <- data %>% group_by(taxon) %>% do(extract_shannon(.))
+
+dat.shannon %>% 
+  group_by(taxon) %>% summarise(mean_S = mean(shannon))
+
+dat.shannon %>%
   ungroup %>%
   mutate(Transect_type = fct_reorder(Transect_type, shannon)) %>% 
   ggplot(aes(x = Transect_type, y = shannon, fill = Transect_type)) + 
@@ -62,17 +79,25 @@ data %>% group_by(Transect_type, taxon, Landscape) %>%
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
+ggsave("shannon_plot.svg", width = 8, height = 3.5)
+
 for(i in 1:3){
   print(unique(data$taxon)[[i]])
   
   dat.temp <- data %>% filter(taxon == unique(data$taxon)[[i]]) %>% 
-    group_by(Transect_type, taxon, Landscape) %>% 
-    filter(n > 0) %>% do(extract_shannon(.)) %>%
-    ungroup
+    group_by(taxon, Landscape, Transect_type) %>% do(extract_shannon(.))
   
   print(summary(aov(shannon ~ Transect_type, data = dat.temp)))
   
 }
+
+
+anov.tax <- lme4::lmer(shannon ~ taxon + (1|Transect_type), 
+                data = dat.shannon)
+car::Anova(anov.tax, test.statistic = "F")
+
+pairs(emmeans(anov.tax, ~ taxon))
+
 
 # NMDS #
 ndms.plots <- c()
@@ -152,7 +177,7 @@ ggplot() +
   scale_shape_discrete("Habitat type") +
   theme_bw()
 
-ggsave("nmds_plot.svg", width = 12, height = 5)
+ggsave("nmds_plot.svg", width = 8, height = 3.5)
 
 
 # pairwise "
@@ -220,8 +245,7 @@ data %>% group_by(taxon, Transect_type) %>%
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggsave("beta.div_plot.svg", width = 9, height = 7)
-
+ggsave("beta.div_plot.svg", width = 8, height = 6)
 
 
 ### test effect of green infra ###
@@ -283,7 +307,7 @@ beta.by.landscape %>% group_by(taxon, Road_density, Powerline) %>%
   scale_color_discrete("Road density") +
   theme_bw()
 
-ggsave("beta.by.landscape_plot.svg", width = 8, height = 3.5)
+ggsave("beta.by.landscape_plot.svg", width = 8, height = 6)
 
 for(i in 1:3){
   print(unique(data$taxon)[[i]])
@@ -365,6 +389,7 @@ plot(dend)
 ## clean environment ##
 #######################
 gdata::keep(data, 
+            dat.shannon,
             ndms.plots,
             beta.by.landscape,
             sure = T)
