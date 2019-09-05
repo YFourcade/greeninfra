@@ -2,6 +2,8 @@ library(tidyverse)
 library(vegan)
 library(betapart)
 library(emmeans)
+library(MuMIn)
+library(vegan)
 
 ### import data ###
 
@@ -40,7 +42,39 @@ data <- bind_rows("Bumblebees" = data_BB, "Butterflies" = data_But, "Plants" = d
 
 ### test effect of habitat types ###
 
-### NMDS ###
+
+# Diversity #
+extract_shannon <- function(x){
+  y <- x %>% ungroup %>% spread(key = Species, value = n)
+  shannon <- diversity(y[,-c(1:10)])
+  return(as.data.frame(shannon))
+}
+
+data %>% group_by(Transect_type, taxon, Landscape) %>% 
+  filter(n > 0) %>% do(extract_shannon(.)) %>%
+  ungroup %>%
+  mutate(Transect_type = fct_reorder(Transect_type, shannon)) %>% 
+  ggplot(aes(x = Transect_type, y = shannon, fill = Transect_type)) + 
+  geom_boxplot() + facet_grid(~taxon) +
+  scale_x_discrete("") + 
+  scale_y_continuous("Shannon index") + 
+  scale_fill_discrete("Habitat type") +
+  theme_bw() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+for(i in 1:3){
+  print(unique(data$taxon)[[i]])
+  
+  dat.temp <- data %>% filter(taxon == unique(data$taxon)[[i]]) %>% 
+    group_by(Transect_type, taxon, Landscape) %>% 
+    filter(n > 0) %>% do(extract_shannon(.)) %>%
+    ungroup
+  
+  print(summary(aov(shannon ~ Transect_type, data = dat.temp)))
+  
+}
+
+# NMDS #
 ndms.plots <- c()
 for(i in unique(data$taxon)){
   data.nmds <- data %>% filter(taxon == i) %>% ungroup %>% 
@@ -120,6 +154,43 @@ ggplot() +
 
 ggsave("nmds_plot.svg", width = 12, height = 5)
 
+
+# pairwise "
+svg("cluster.svg", width = 12, height = 5)
+
+par(mfrow=c(1,3))
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Bumblebees",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Butterflies") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Butterflies",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Plants") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Plants",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+dev.off()
+
+
 ### beta-diversity ###
 
 # by habitat type
@@ -151,98 +222,144 @@ data %>% group_by(taxon, Transect_type) %>%
 
 ggsave("beta.div_plot.svg", width = 9, height = 7)
 
-# pairwise
-svg("cluster.svg", width = 12, height = 5)
-
-par(mfrow=c(1,3))
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      mutate(n = ifelse(n == 0, 0, 1)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Bumblebees",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
-
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Butterflies") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      mutate(n = ifelse(n == 0, 0, 1)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Butterflies",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
-
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Plants") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      mutate(n = ifelse(n == 0, 0, 1)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Plants",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
-dev.off()
 
 
 ### test effect of green infra ###
 # permanova
-permanova.list <- vector("list", 3)
-n = 0
-for(i in unique(data$taxon)){
-  n = n + 1
-  data.nmds <- data %>% filter(taxon == i, Transect_type != "Powerline") %>% ungroup %>% 
-    dplyr::select(2:8) %>%
-    spread(key = Species, value = n) %>%
-    filter(rowSums(.[,-c(1:5)]) > 0)
-  
-  permanova <- adonis(data.nmds[,-c(1:5)] ~ Powerline * `Road Density` * Transect_type, data = data.nmds)
-  permanova.list[[n]] <- permanova
-}
-names(permanova.list) <- unique(data$taxon)
+# permanova.list <- vector("list", 3)
+# n = 0
+# for(i in unique(data$taxon)){
+#   n = n + 1
+#   data.nmds <- data %>% filter(taxon == i, Transect_type != "Powerline") %>% ungroup %>% 
+#     dplyr::select(2:8, 11) %>%
+#     spread(key = Species, value = n) %>%
+#     filter(rowSums(.[,-c(1:5)]) > 0)
+#   
+#   permanova <- adonis(data.nmds[,-c(1:5)] ~ Transect_type * Powerline * `Road Density` + 
+#                         Transect_type * Grasslands, data = data.nmds)
+#   permanova.list[[n]] <- permanova
+# }
+# names(permanova.list) <- unique(data$taxon)
 
 # beta diversity between habitat types depending on powerline and road density
-extract_beta <- function(x){
+extract_beta_multi <- function(x){
   y <- x %>% ungroup %>% spread(key = Species, value = n) %>% 
     mutate_all(function(x){ifelse(x == 0, 0, 1)})
   b <- beta.multi(y[,-c(1:10)])
   return(as.data.frame(b))
 }
- 
+
 
 beta.by.landscape <- 
-  data %>% filter(Transect_type != "Powerline") %>% rename(Road_density = `Road Density`) %>%
-  group_by(Transect_type, `Landscape type`, Species) %>% 
-  summarise(n = sum(n),
-            taxon = unique(taxon), 
-            Landscape = NA,
-            Road_density = unique(Road_density),
-            Powerline  = unique(Powerline),
-            Forest = NA,
-            Arable = NA,
-            Grasslands = NA,
-            Roads = NA) %>%
-  group_by(taxon, Powerline, Road_density) %>% 
-  do(extract_beta(.))
+  data %>% filter(Transect_type != "Powerline") %>% 
+  group_by(taxon, Landscape) %>% 
+  do(extract_beta_multi(.)) %>%
+  left_join(unique(data[,c(2,7,8,11)])) %>%
+  rename(Road_density = `Road Density`)
 
-ggplot(beta.by.landscape, aes(y = beta.SOR, x = Powerline, color = Road_density)) + 
-  geom_point(size = 3) +
-  geom_line(aes(group = Road_density)) +
-  facet_grid(~ taxon, scale = "free") +
-  scale_y_continuous("Total beta-diversity (beta.SOR)") +
+beta.by.landscape %>% group_by(taxon, Road_density, Powerline) %>% summarise(n = n())
+
+beta.by.landscape %>% group_by(taxon, Road_density, Powerline) %>% 
+  summarise(beta.SIM = mean(beta.SIM),
+            beta.SNE = mean(beta.SNE),
+            beta.SOR = mean(beta.SOR)) %>%
+  gather(-1,-2,-3, value = "mean.beta", key = "type") %>%
+  left_join(
+    beta.by.landscape %>% group_by(taxon, Road_density, Powerline) %>% 
+      summarise(beta.SIM = plotrix::std.error(beta.SIM),
+                beta.SNE = plotrix::std.error(beta.SNE),
+                beta.SOR = plotrix::std.error(beta.SOR)) %>%
+      gather(-1,-2,-3, value = "se.beta", key = "type")
+  ) %>%
+  mutate(type = factor(type, levels = c("beta.SOR", "beta.SIM", "beta.SNE"))) %>%
+  ggplot(aes(y = mean.beta, x = Powerline, color = Road_density)) + 
+  geom_point(size = 3, position = position_dodge(width = .2)) +
+  geom_line(aes(group = Road_density), position = position_dodge(width = .2)) +
+  geom_errorbar(aes(ymin = mean.beta - se.beta, ymax = mean.beta + se.beta), width = 0, position = position_dodge(width = .2)) +
+  facet_grid(type ~ taxon, scale = "free", 
+             labeller = labeller(type = beta.labs)) +
+  scale_x_discrete("Presence of powerline") + 
+  scale_y_continuous("Beta-diversity") +
+  scale_color_discrete("Road density") +
   theme_bw()
 
 ggsave("beta.by.landscape_plot.svg", width = 8, height = 3.5)
 
-test.beta.by.landscape <- lm(beta.SOR ~ Powerline * Road_density + taxon, data = beta.by.landscape)
-summary(test.beta.by.landscape)
+for(i in 1:3){
+  print(unique(data$taxon)[[i]])
+  
+  dat.temp <- beta.by.landscape %>% filter(taxon == unique(data$taxon)[[i]])
+  # # step 0: powerline only
+  # print(summary(lm(beta.SOR ~ Powerline, 
+  #                  data = beta.by.landscape %>% filter(taxon == unique(data$taxon)[[i]]))))
+  # 
+  # # step 1: powerline and road density only
+  # print(summary(lm(beta.SOR ~ Powerline * Road_density, 
+  #            data = beta.by.landscape %>% filter(taxon == unique(data$taxon)[[i]]))))
+  
+  # step 2: considering grassland area as well
+  test.beta.by.landscape <- lm(beta.SOR ~ Powerline * Road_density * Grasslands, 
+                               data = dat.temp, na.action = na.fail)
+  print(summary(test.beta.by.landscape))
+}
 
-pairs(emmeans(test.beta.by.landscape, ~  Powerline | Road_density))
+
+beta.by.landscape %>% filter(taxon == "Bumblebees") %>% pull(Grasslands) %>% hist
+quantile(beta.by.landscape %>% filter(taxon == "Bumblebees") %>% pull(Grasslands), probs = c(.1,.25,.5,.75))
+
+test.beta.by.landscape_BB <- lm(beta.SOR ~ Powerline * Road_density * Grasslands, 
+                                data = beta.by.landscape %>% filter(taxon == "Bumblebees"))
+
+
+dat1 <- (visreg(test.beta.by.landscape_BB, xvar = "Powerline", by = "Road_density", 
+                cond = list(Grasslands = 0.013), plot = F))$fit
+dat2 <- (visreg(test.beta.by.landscape_BB, xvar = "Powerline", by = "Road_density", 
+                cond = list(Grasslands = 0.025), plot = F))$fit
+dat3 <- (visreg(test.beta.by.landscape_BB, xvar = "Powerline", by = "Road_density", 
+                cond = list(Grasslands = 0.041), plot = F))$fit
+
+bind_rows(Low = dat1, Medium = dat2, High = dat3, .id = "Grassland cover") %>%
+  mutate(`Grassland cover`  = factor(`Grassland cover`, levels = c("Low", "Medium", "High"))) %>%
+  ggplot(aes(y = visregFit, x = Powerline, color = Road_density)) + 
+  geom_point(size = 3, position = position_dodge(width = .2)) +
+  geom_line(aes(group = Road_density), position = position_dodge(width = .2)) +
+  geom_errorbar(aes(ymin = visregLwr, ymax = visregUpr), width = 0, position = position_dodge(width = .2)) +
+  facet_grid( ~ `Grassland cover`, scale = "free") +
+  scale_x_discrete("Presence of powerline") + 
+  scale_y_continuous("Beta-diversity") +
+  scale_color_discrete("Road density") +
+  theme_bw()
+
+pairs(emmeans(test.beta.by.landscape_BB, ~ Road_density | Powerline, at = list(Grasslands = 0.013)))
+pairs(emmeans(test.beta.by.landscape_BB, ~ Road_density | Powerline, at = list(Grasslands = 0.041)))
+
+pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(Grasslands = 0.011)))
+pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(Grasslands = 0.013)))
+pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(Grasslands = 0.025)))
+pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(Grasslands = 0.041)))
+
+# beta diversity between landscape types depending on powerline and road density
+library(dendextend)
+
+data.by.landscape <- data %>% filter(Transect_type != "Powerline") %>% 
+  group_by(taxon, Landscape, Species) %>% 
+  summarise(n = sum(n))
+
+
+dend <- as.dendrogram(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees", Transect_type != "Powerline") %>% 
+                                       group_by(Landscape, Species) %>% summarise(n = sum(n)) %>%
+                                       spread(key = Species, value = n) %>% ungroup %>%
+                                       column_to_rownames("Landscape")),
+                             method="single"))
+
+colors_to_use <- data %>% group_by(Landscape) %>% 
+  summarise(Landscape_type = unique(`Landscape type`)) %>% 
+  pull(Landscape_type)
+colors_to_use <- as.factor(colors_to_use)
+levels(colors_to_use) <- 1:4
+colors_to_use <- colors_to_use[order.dendrogram(dend)]
+labels_colors(dend) <- as.numeric(colors_to_use)
+plot(dend)
 
 #######################
 ## clean environment ##
