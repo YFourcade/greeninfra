@@ -35,7 +35,7 @@ Beta-diversity appears consistently lower in powerline habitats and higher in ro
 Partitioning of beta-diversity reveals that patterns of beta-diversity are mostly driven by species turnover between habitat types.
 
 
-![Fig. 4](beta.div_plot.svg)
+![Fig. 4](beta.div_plot.svg){:height="50%" width="50%"}
 
 
 
