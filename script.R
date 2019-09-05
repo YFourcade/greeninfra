@@ -98,6 +98,41 @@ car::Anova(anov.tax, test.statistic = "F")
 
 pairs(emmeans(anov.tax, ~ taxon))
 
+# pairwise merged
+svg("cluster.svg", width = 12, height = 5)
+
+par(mfrow=c(1,3))
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Bumblebees",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Butterflies") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Butterflies",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+
+plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Plants") %>% 
+                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                      spread(key = Species, value = n) %>% 
+                      column_to_rownames("Transect_type")),
+            method="single"),
+     main = "Plants",
+     ylab = "Bray–Curtis distance",
+     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+
+dev.off()
+
 
 # NMDS #
 ndms.plots <- c()
@@ -178,42 +213,6 @@ ggplot() +
   theme_bw()
 
 ggsave("nmds_plot.svg", width = 8, height = 3.5)
-
-
-# pairwise "
-svg("cluster.svg", width = 12, height = 5)
-
-par(mfrow=c(1,3))
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Bumblebees",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
-
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Butterflies") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Butterflies",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
-
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Plants") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Plants",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
-dev.off()
 
 
 ### beta-diversity ###

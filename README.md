@@ -13,32 +13,31 @@ Specifically, the sampling plots had a higher species diversity of plants (mean 
 
 There were differences in species diversity (expressed as Shannon index) between the different habitat types for both plants (*F*<sub>4,127</sub> = 11.79, *P* < 0.001) and butterflies (*F*<sub>4,128</sub> = 6.45, *P* < 0.001) but not for bumblebees (*F*<sub>4,128</sub> = 2.01, *P* = 0.097).
 
+Differences in diversity were largely consistent between taxa (even including bumblebees, for which it was not significant), the most diverse being pastures, powerlines and small roads, while field margins and big roads were less diverse.
+
 ![Fig. 1](shannon_plot.svg)
 
 
 ### Community composition
 
-
-Below is a plot of a Non-metric multidimensional scaling analysis (NMDS) showing the overlap / differences in community composition between different habitats:
-
-![Fig. 2](nmds_plot.svg)
-
-
-Pairwise distances show that between-fields habitats have the most unique species composition while pasture and small road habitats are consistently very similar.
+When all sites belonging to a given habitat type were merged, a hierarchical cluster analysis on pairwise distances shows that between-fields habitats (field margins) have the most unique species composition while pasture and small road habitats are consistently very similar. Powerline habitats have also consistantly an intermediate composition between field margins and pasture/small roads, while big roads habitats have a species composition ressembling either small roads and pasture (bumblebees) or powerline (plants) habitats, or are more intermediate (butterflies).
 
 ![Fig. 3](cluster.svg)
 
-### Beta diversity
 
-Beta-diversity appears consistently lower in powerline habitats and higher in road habitats and pastures, while beta-diversity is at an intermediate level in between-fields habitats (field margins).
+A Non-metric multidimensional scaling analysis (NMDS) reveals large overlap in community composition between different habitats, but also shows that some habitat types are more variables than others. For example, big road habitats appear more divergent and more diverse than the others for bumblebees; for butterflies, communities in small roads habitats seem to overlap all other habitat types; for plantes, between-fields habitats look highly different and only little overlapping comapred to all other habitat types.
+
+![Fig. 2](nmds_plot.svg)
+
+Better insights into differences in community composition that can exist within the same habitat types can be gained from analyses of community dissimilarity among transects of the same habitat type, a.k.a. beta-diversity. Here, beta-diversity appears consistently lower in powerline habitats and higher in road habitats and pastures, while beta-diversity is at an intermediate level in between-fields habitats (field margins).
 
 Partitioning of beta-diversity reveals that patterns of beta-diversity are mostly driven by species turnover between habitat types.
 
 
-![Fig. 4](beta.div_plot.svg){:height="50%" width="50%"}
+![Fig. 4](beta.div_plot.svg)
 
 
 
 ### Influence of powerlines and road density 
 
-<img src=beta.by.landscape_plot.svg height="400">
+<img src=beta.by.landscape_plot.svg height="600">
