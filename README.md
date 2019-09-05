@@ -7,11 +7,11 @@ Comparison of bumblebee, butterfly and plant communities in different habitat ty
 
 ### Species diversity
 
-Overall, there were differences in species diversity between taxa, both in terms of raw species richness (*F*~2,391~ = 303.83, *P* < 0.001) and using the Shannon index of diversity (*F*~2,391~ = 341.09, *P* < 0.001) (Fig. 1).
+Overall, there were differences in species diversity between taxa, both in terms of raw species richness (*F*<sub>2,391</sub> = 303.83, *P* < 0.001) and using the Shannon index of diversity (*F*<sub>2,391</sub> = 341.09, *P* < 0.001) (Fig. 1).
 
 Specifically, the sampling plots had a higher species diversity of plants (Mean species richness per transect = 16.7, Mean Shannon index per transect = 2.62) than butterflies (Mean species richness per transect = 8.65, Mean Shannon index per transect = 1.64), and a higher species diversity of butterflies than bumblebees (Mean species richness per transect = 4.22, Mean Shannon index per transect = 1.09).
 
-There were differences in species diversity (expressed as Shannon index) between the different habitat types for both plants (*F*~4,127~ = 11.79, *P* < 0.001) and butterflies (*F*~4,128~ = 6.45, *P* < 0.001) but not for bumblebees (*F*~4,128~ = 2.01, *P* = 0.097).
+There were differences in species diversity (expressed as Shannon index) between the different habitat types for both plants (*F*<sub>4,127</sub>~ = 11.79, *P* < 0.001) and butterflies (*F*<sub>4,128</sub> = 6.45, *P* < 0.001) but not for bumblebees (*F*<sub>4,128</sub> = 2.01, *P* = 0.097).
 
 ![Fig. 1](shannon_plot.svg)
 

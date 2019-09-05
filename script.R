@@ -307,7 +307,7 @@ beta.by.landscape %>% group_by(taxon, Road_density, Powerline) %>%
   scale_color_discrete("Road density") +
   theme_bw()
 
-ggsave("beta.by.landscape_plot.svg", width = 8, height = 6)
+ggsave("beta.by.landscape_plot.svg", width = 6.5, height = 5)
 
 for(i in 1:3){
   print(unique(data$taxon)[[i]])
