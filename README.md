@@ -29,13 +29,12 @@ A Non-metric multidimensional scaling analysis (NMDS) reveals large overlap in c
 
 ![Fig. 2](nmds_plot.svg)
 
-Better insights into differences in community composition that can exist within the same habitat types can be gained from analyses of community dissimilarity among transects of the same habitat type, a.k.a. beta-diversity. Here, beta-diversity appears consistently lower in powerline habitats and higher in road habitats and pastures, while beta-diversity is at an intermediate level in between-fields habitats (field margins).
+Better insights into differences in community composition that can exist within the same habitat types can be gained from analyses of community dissimilarity among transects of the same habitat type, a.k.a. beta-diversity. Here, beta-diversity appears consistently lower in powerline habitats (i.e. homogeneous community compositon) and higher in road habitats and pastures, while beta-diversity is at an intermediate level in between-fields habitats (field margins).  
 
 Partitioning of beta-diversity reveals that patterns of beta-diversity are mostly driven by species turnover between habitat types.
 
 
 ![Fig. 4](beta.div_plot.svg)
-
 
 
 ### Influence of powerlines and road density 
