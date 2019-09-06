@@ -5,6 +5,7 @@ library(emmeans)
 library(visreg)
 library(harrietr)
 library(lmerTest)
+library(cowplot)
 
 ### import data ###
 
@@ -69,7 +70,13 @@ dat.shannon <- data %>% group_by(taxon) %>% do(extract_shannon(.))
 dat.shannon %>% 
   group_by(taxon) %>% summarise(mean_S = mean(shannon))
 
-dat.shannon %>%
+anov.tax <- lme4::lmer(shannon ~ taxon + (1|Transect_type), 
+                       data = dat.shannon)
+car::Anova(anov.tax, test.statistic = "F")
+
+pairs(emmeans(anov.tax, ~ taxon))
+
+plot.sh.hab <- dat.shannon %>%
   ungroup %>%
   mutate(Transect_type = fct_reorder(Transect_type, shannon)) %>% 
   ggplot(aes(x = Transect_type, y = shannon, fill = Transect_type)) + 
@@ -80,7 +87,21 @@ dat.shannon %>%
   theme_bw() + 
   theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
-ggsave("shannon_plot.svg", width = 8, height = 3.5)
+plot.sh.land <- dat.shannon %>% left_join(sites) %>%
+  group_by(taxon, Powerline, `Road Density`) %>% 
+  summarise(mean = mean(shannon), se = plotrix::std.error(shannon)) %>%
+  ggplot(aes(y = mean, x = Powerline, color = `Road Density`)) + 
+  geom_point(size = 3, position = position_dodge(width = .3)) + 
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0, position = position_dodge(width = .3)) +
+  geom_line(aes(group = `Road Density`), position = position_dodge(width = .3)) + 
+  facet_grid(~taxon) +
+  scale_x_discrete("Presence of powerline") + 
+  scale_y_continuous("Shannon index") + 
+  theme_bw()
+
+plot_grid(plot.sh.hab, plot.sh.land, nrow = 2, align = "v",label_size = 10)
+
+ggsave("shannon_plot.svg", width = 8, height = 6)
 
 for(i in 1:3){
   print(unique(data$taxon)[[i]])
@@ -92,12 +113,15 @@ for(i in 1:3){
   
 }
 
-
-anov.tax <- lme4::lmer(shannon ~ taxon + (1|Transect_type), 
-                       data = dat.shannon)
-car::Anova(anov.tax, test.statistic = "F")
-
-pairs(emmeans(anov.tax, ~ taxon))
+for(i in 1:3){
+  print(unique(data$taxon)[[i]])
+  
+  dat.temp <- data %>% filter(taxon == unique(data$taxon)[[i]]) %>% 
+    group_by(taxon, Landscape, Transect_type) %>% do(extract_shannon(.)) %>% left_join(sites)
+  
+  print(summary(aov(shannon ~ Powerline * `Road Density`, data = dat.temp)))
+  
+}
 
 # pairwise merged
 svg("cluster.svg", width = 12, height = 5)
@@ -143,23 +167,23 @@ for(i in unique(data$taxon)){
     spread(key = Species, value = n) %>%
     filter(rowSums(.[,-c(1:5)]) > 0)
   
-  nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 10000, maxit = 20000)
+  nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 100, maxit = 200)
   
   # plot #
   # prepare scores
   nmds.scores <- as.data.frame(scores(nmds))
   nmds.scores$site <- rownames(nmds.scores)
-  nmds.scores$road <- data.nmds$`Road Density`
-  nmds.scores$power <- data.nmds$Powerline
+  nmds.scores$landscape <- data.nmds$`Landscape type`
   nmds.scores$habitat <- factor(data.nmds$Transect_type, levels = c("Powerline",
                                                                     "Between fields",
                                                                     "Pasture",
                                                                     "Small road",
                                                                     "Big road"))
   
-  
-  # species.scores <- as.data.frame(scores(nmds, "species"))
-  # species.scores$species <- rownames(species.scores)
+  nmds.scores$landscape <- gsub("Poweline Low road", "Powerline; Low road density", nmds.scores$landscape)
+  nmds.scores$landscape <- gsub("Poweline High road", "Powerline; High road density", nmds.scores$landscape)
+  nmds.scores$landscape <- gsub("No powerline Low road", "No Powerline; Low road density", nmds.scores$landscape)
+  nmds.scores$landscape <- gsub("No powerline High road", "No Powerline; High road density", nmds.scores$landscape)
   
   # create hull polygons
   
@@ -189,19 +213,41 @@ for(i in unique(data$taxon)){
                                                                   "Pasture",
                                                                   "Small road",
                                                                   "Big road"))
+  # habitat
+  landscape.1 <- nmds.scores[nmds.scores$landscape == 
+                               "Powerline; Low road density", ][chull(nmds.scores[nmds.scores$landscape == 
+                                                                                    "Powerline; Low road density", c("NMDS1", "NMDS2")]), ] 
+  landscape.2 <- nmds.scores[nmds.scores$landscape == 
+                               "Powerline; High road density", ][chull(nmds.scores[nmds.scores$landscape == 
+                                                                                     "Powerline; High road density", c("NMDS1", "NMDS2")]), ] 
+  landscape.3 <- nmds.scores[nmds.scores$landscape == 
+                               "No Powerline; Low road density", ][chull(nmds.scores[nmds.scores$landscape == 
+                                                                                       "No Powerline; Low road density", c("NMDS1", "NMDS2")]), ] 
+  landscape.4 <- nmds.scores[nmds.scores$landscape == 
+                               "No Powerline; High road density", ][chull(nmds.scores[nmds.scores$landscape == 
+                                                                                        "No Powerline; High road density", c("NMDS1", "NMDS2")]), ] 
+  hull.landscape <- rbind(landscape.1, landscape.2) 
+  hull.landscape <- rbind(hull.landscape, landscape.3) 
+  hull.landscape <- rbind(hull.landscape, landscape.4) 
   
+  hull.landscape$landscape <- factor(hull.landscape$landscape, levels = c("Powerline; Low road density",
+                                                                          "Powerline; High road density",
+                                                                          "No Powerline; Low road density",
+                                                                          "No Powerline; High road density"))
   
   ndms.plots <- rbind.data.frame(ndms.plots, 
                                  cbind.data.frame(taxon = i,
-                                                  rbind.data.frame(cbind.data.frame(what = "hull", hull.habitat),
-                                                                   cbind.data.frame(what = "scores", nmds.scores)
+                                                  rbind.data.frame(
+                                                    cbind.data.frame(what = "hull.habitat", hull.habitat),
+                                                    cbind.data.frame(what = "hull.landscape", hull.landscape),
+                                                    cbind.data.frame(what = "scores", nmds.scores)
                                                   )
                                  )
   )
 }
 
-ggplot() + 
-  geom_polygon(data=ndms.plots[ndms.plots$what == "hull",],
+p.hab <- ggplot() + 
+  geom_polygon(data=ndms.plots[ndms.plots$what == "hull.habitat",],
                aes(x=NMDS1,y=NMDS2,fill=habitat ,group=habitat ),alpha=0.25) + # add the convex hulls
   # geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
   geom_point(data=ndms.plots[ndms.plots$what == "scores",],
@@ -213,7 +259,23 @@ ggplot() +
   scale_shape_discrete("Habitat type") +
   theme_bw()
 
-ggsave("nmds_plot.svg", width = 8, height = 3.5)
+p.land <- ggplot() + 
+  geom_polygon(data=ndms.plots[ndms.plots$what == "hull.landscape",],
+               aes(x=NMDS1,y=NMDS2,fill=landscape ,group=landscape ),alpha=0.25) + # add the convex hulls
+  # geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
+  geom_point(data=ndms.plots[ndms.plots$what == "scores",],
+             aes(x=NMDS1,y=NMDS2,shape=landscape,colour=landscape),size=1) + # add the point markers
+  facet_grid(~ taxon) +
+  coord_equal() +
+  scale_color_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
+  scale_fill_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
+  scale_shape_discrete("Landscape type") +
+  theme_bw()
+
+plot_grid(p.hab, p.land, nrow = 2, align = "v", 
+          labels = c("By habitat type", "By landscape type"), label_size = 10)
+
+ggsave("nmds_plot.svg", width = 10, height = 7)
 
 
 ### beta-diversity ###
@@ -403,11 +465,11 @@ pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(G
 
 # butterflies
 test.beta.by.landscape_But <- lmer(beta ~ Powerline * Road_density * Grasslands +
-                                    (1|Transect_type_1) + (1|Transect_type_2), 
-                                  data =  data.test.beta.by.landscape %>% 
-                                    filter(taxon == "Butterflies", type == "beta.sor") %>%
-                                    left_join(sites),
-                                  na.action = na.fail)
+                                     (1|Transect_type_1) + (1|Transect_type_2), 
+                                   data =  data.test.beta.by.landscape %>% 
+                                     filter(taxon == "Butterflies", type == "beta.sor") %>%
+                                     left_join(sites),
+                                   na.action = na.fail)
 
 visreg(test.beta.by.landscape_But, xvar = "Road_density", by = "Grasslands", at = c(0.013,0.024,0.038), gg = T)
 
@@ -426,6 +488,7 @@ gdata::keep(sites,
             dat.shannon,
             ndms.plots,
             data_beta, 
+            beta.labs,
             sure = T)
 
 
