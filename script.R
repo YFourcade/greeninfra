@@ -109,8 +109,8 @@ for(i in 1:3){
   dat.temp <- data %>% filter(taxon == unique(data$taxon)[[i]]) %>% 
     group_by(taxon, Landscape, Transect_type) %>% do(extract_shannon(.))
   
-  print(summary(aov(shannon ~ Transect_type, data = dat.temp)))
-  
+  print(knitr::kable(data.frame(anova(
+    lm(shannon ~ Transect_type, data = dat.temp))), digits = 3))
 }
 
 for(i in 1:3){
@@ -119,7 +119,8 @@ for(i in 1:3){
   dat.temp <- data %>% filter(taxon == unique(data$taxon)[[i]]) %>% 
     group_by(taxon, Landscape, Transect_type) %>% do(extract_shannon(.)) %>% left_join(sites)
   
-  print(summary(aov(shannon ~ Powerline * `Road Density`, data = dat.temp)))
+  print(knitr::kable(summary(lmer(shannon ~ Powerline * `Road Density` + (1|Transect_type), 
+                            data = dat.temp))$coefficients, digits = 3))
   
 }
 
