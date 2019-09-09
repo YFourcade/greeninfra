@@ -79,8 +79,12 @@ pairs(emmeans(anov.tax, ~ taxon))
 plot.sh.hab <- dat.shannon %>%
   ungroup %>%
   mutate(Transect_type = fct_reorder(Transect_type, shannon)) %>% 
-  ggplot(aes(x = Transect_type, y = shannon, fill = Transect_type)) + 
-  geom_boxplot() + facet_grid(~taxon) +
+  group_by(taxon, Transect_type) %>% 
+  summarise(mean = mean(shannon), se = plotrix::std.error(shannon)) %>%
+  ggplot(aes(x = Transect_type, y = mean, color = Transect_type)) + 
+  geom_point(size = 3) + 
+  geom_errorbar(aes(ymin = mean - se, ymax = mean + se), width = 0) +
+  facet_grid(~taxon) +
   scale_x_discrete("") + 
   scale_y_continuous("Shannon index") + 
   scale_fill_discrete("Habitat type") +
@@ -110,7 +114,7 @@ for(i in 1:3){
     group_by(taxon, Landscape, Transect_type) %>% do(extract_shannon(.))
   
   print(knitr::kable(data.frame(anova(
-    lm(shannon ~ Transect_type, data = dat.temp))), digits = 3))
+    lmer(shannon ~ Transect_type + (1|Landscape), data = dat.temp))), digits = 3))
 }
 
 for(i in 1:3){
@@ -119,8 +123,8 @@ for(i in 1:3){
   dat.temp <- data %>% filter(taxon == unique(data$taxon)[[i]]) %>% 
     group_by(taxon, Landscape, Transect_type) %>% do(extract_shannon(.)) %>% left_join(sites)
   
-  print(knitr::kable(summary(lmer(shannon ~ Powerline * `Road Density` + (1|Transect_type), 
-                            data = dat.temp))$coefficients, digits = 3))
+  print(knitr::kable(summary(lmer(shannon ~ Powerline * `Road Density` + (1|Transect_type) + (1|Landscape), 
+                                  data = dat.temp))$coefficients, digits = 3))
   
 }
 
@@ -276,6 +280,21 @@ plot_grid(p.hab, p.land, nrow = 2, align = "v",
 
 ggsave("nmds_plot.svg", width = 10, height = 7)
 
+# PERMANOVA #
+
+for(i in unique(data$taxon)){
+  data.temp <- data %>% ungroup %>% filter(taxon == i) %>% 
+    group_by(Landscape, Transect_type) %>% mutate(s = sum(n)) %>% filter(s > 0) %>% select(-s) %>%
+    spread(key = Species, value = n)
+  
+  
+  a <- adonis(data.temp[,-c(1:10)] ~ Landscape + 
+                Transect_type + 
+                `Road Density` + Powerline, 
+              data = data.temp,
+              permutations = 9999)
+  print(a)
+}
 
 ### beta-diversity ###
 
@@ -338,6 +357,34 @@ data_beta %>% filter(Transect_type_1 == Transect_type_2) %>%
 ggsave("beta.div.per.hab.svg", width = 8, height = 6)
 
 
+for(j in unique(c("beta.sim", "beta.sne", "beta.sor"))){
+  print(j)
+  
+  dat.temp <- data_beta %>% filter(Transect_type_1 == Transect_type_2) %>% 
+    mutate(Transect_type = Transect_type_1) %>%
+    ungroup %>%
+    select(2,3,4,Transect_type, taxon, Landscape_1, Landscape_2) %>%
+    gather(-Transect_type, -taxon, -Landscape_1, -Landscape_2, key = "beta", value = "value") %>% 
+    filter(beta == j)
+  
+  print(knitr::kable(
+    data.frame(
+      anova(
+        lmer(value ~ Transect_type * taxon + (1|Landscape_1) + (1|Landscape_2), 
+             data = dat.temp
+        )
+      )
+    ), digits = 3)
+  )
+  
+  print(pairs(emmeans(lmer(value ~ Transect_type * taxon + (1|Landscape_1) + (1|Landscape_2), 
+                     data = dat.temp),
+                 ~ Transect_type | taxon)))
+  
+  cat("\n")
+}
+
+
 # beta-diversity by landscape type
 data_beta %>% filter(Landscape_1 == Landscape_2) %>% 
   mutate(Landscape = Landscape_1, 
@@ -377,8 +424,8 @@ data.test.beta.by.landscape <- data_beta %>% filter(Landscape_1 == Landscape_2) 
 
 # step 1 : road and powerline only
 par(mfrow = c(3,3))
-for(i in levels(data.test.beta.by.landscape$type)){
-  for(j in unique(data.test.beta.by.landscape$taxon)){
+for(j in unique(data.test.beta.by.landscape$taxon)){
+  for(i in levels(data.test.beta.by.landscape$type)){
     if(i == "beta.sne"){
       test.beta.by.landscape <- lmer(log(beta+0.1) ~ Powerline * Road_density +
                                        (1|Transect_type_1) + (1|Transect_type_2), 
@@ -394,7 +441,8 @@ for(i in levels(data.test.beta.by.landscape$type)){
     }
     print(paste("Type of beta-diversity :", i))
     print(paste("Taxon :", j))
-    print(round(summary(test.beta.by.landscape)$coefficients, 3))
+    print(knitr::kable(
+      data.frame(summary(test.beta.by.landscape)$coefficients), digits= 3))
     
     car::qqPlot(residuals(test.beta.by.landscape), lwd=.5, main = paste(j, i))
   }
@@ -403,26 +451,27 @@ par(mfrow = c(1,1))
 
 # step 2 : add grassland
 par(mfrow = c(3,3))
-for(i in levels(data.test.beta.by.landscape$type)){
-  for(j in unique(data.test.beta.by.landscape$taxon)){
+for(j in unique(data.test.beta.by.landscape$taxon)){
+  for(i in levels(data.test.beta.by.landscape$type)){
     if(i == "beta.sne"){
       test.beta.by.landscape <- lmer(log(beta+0.1) ~ Powerline * Road_density * Grasslands +
                                        (1|Transect_type_1) + (1|Transect_type_2), 
                                      data =  data.test.beta.by.landscape %>% 
                                        filter(taxon == j, type == i) %>%
-                                       left_join(sites),
+                                       left_join(sites, by = c("Landscape", "Powerline")),
                                      na.action = na.fail)}
     else{
       test.beta.by.landscape <- lmer(beta ~ Powerline * Road_density * Grasslands +
                                        (1|Transect_type_1) + (1|Transect_type_2), 
                                      data =  data.test.beta.by.landscape %>% 
                                        filter(taxon == j, type == i) %>%
-                                       left_join(sites),
+                                       left_join(sites, by = c("Landscape", "Powerline")),
                                      na.action = na.fail)
     }
-    print(paste("Type of beta-diversity :", i))
     print(paste("Taxon :", j))
-    print(round(summary(test.beta.by.landscape)$coefficients, 3))
+    print(paste("Type of beta-diversity :", i))
+    print(knitr::kable(
+      data.frame(summary(test.beta.by.landscape)$coefficients), digits= 3))
     
     car::qqPlot(residuals(test.beta.by.landscape), lwd=.5, main = paste(j, i))
   }
