@@ -3,6 +3,22 @@ Project about community (dis)similarity in Swedish green infrastructures
 
 Comparison of bumblebee, butterfly and plant communities in different habitat types depending on the presence of green infrastructures (powerlines, roads) and on the amount of grassland in the surrounding landscape. 
 
+## Methods
+
+### Study design
+
+Bumblebees, butterflies and plants sampled in 32 landscapes, with either high (16) or low (16) density of roads, and with (16) or without (16) powerlines.
+
+In each of these landscapes, sampling took place in transects belionging to 4 or 5 habitat types : one graze pasture, one larger road, one smaller road, one field margin and one powerline corridor (in the 16 landscapes with powerlines)
+
+### Analyses
+All the results presented below are based on two types of measures:
+
+- the calculation of the Shannon's diversity index in each transect 
+
+- the calculation of pairwise community dissimilarity between all possible pairs of transects, expressed as 3 measures of beta-diversity: the total beta-diversity (beta-SOR) that is partitioned into its nestedness (beta.SNE) and turnover components (beta.SIM).
+
+
 ## Preliminary results
 
 ### Species diversity
@@ -34,9 +50,9 @@ Better insights into differences in community composition that can exist within 
 Partitioning of beta-diversity reveals that patterns of beta-diversity are mostly driven by species turnover between habitat types.
 
 
-![Fig. 4](beta.div_plot.svg)
+![Fig. 4](beta.div.per.hab.svg)
 
 
 ### Influence of powerlines and road density 
 
-<img src=beta.by.landscape_plot.svg height="600">
+![Fig. 5](beta.by.landscape.type.svg)

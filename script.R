@@ -124,38 +124,36 @@ for(i in 1:3){
 }
 
 # pairwise merged
-svg("cluster.svg", width = 12, height = 5)
+svg("cluster.svg", width = 12, height = 10)
 
-par(mfrow=c(1,3))
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Bumblebees") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Bumblebees",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
+par(mfrow=c(2,3))
+for(i in unique(data$taxon)){
+  plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == i) %>% 
+                        group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
+                        spread(key = Species, value = n) %>% 
+                        column_to_rownames("Transect_type")),
+              method="single"),
+       main = i,
+       ylab = "",
+       sub=NA, xlab = NA, cex = 2, cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5, axes = F)
+}
 
-
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Butterflies") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Butterflies",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
-
-plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == "Plants") %>% 
-                      group_by(Transect_type, Species) %>% summarise(n = sum(n)) %>%
-                      spread(key = Species, value = n) %>% 
-                      column_to_rownames("Transect_type")),
-            method="single"),
-     main = "Plants",
-     ylab = "Bray–Curtis distance",
-     sub=NA, xlab = NA, cex = 2, cex.main = 2, cex.axis = 1.5, cex.lab = 1.5)
-
+for(i in unique(data$taxon)){
+  plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == i) %>% 
+                        group_by(`Landscape type`, Species) %>% summarise(n = sum(n)) %>%
+                        spread(key = Species, value = n) %>% 
+                        ungroup %>%
+                        mutate(`Landscape type` = gsub("Poweline Low road", "Powerline\nLow road density", `Landscape type`),
+                               `Landscape type` = gsub("No powerline High road", "No Powerline\nHigh road density", `Landscape type`),
+                               `Landscape type` = gsub("No powerline Low road", "No Powerline\nLow road density", `Landscape type`),
+                               `Landscape type` = gsub("Poweline High road", "Powerline\nHigh road density", `Landscape type`)) %>%
+                        rename(Landscape_type = `Landscape type`) %>%
+                        column_to_rownames("Landscape_type")),
+              method="single"),
+       main = "",
+       ylab = "", axes = F,
+       sub=NA, xlab = NA, cex = 2, cex.main = 1.5, cex.axis = 1.5, cex.lab = 1.5)
+}
 dev.off()
 
 
@@ -286,7 +284,7 @@ names(beta.labs) <- c("beta.sim", "beta.sne", "beta.sor")
 
 extract_beta <- function(x){
   y <- x %>% ungroup %>% spread(key = Species, value = n) %>% mutate(id = paste0(Landscape,"_",Transect_type))
-  b <- beta.pair(y[,-c(1:10)] %>% 
+  b <- beta.pair(y[,-c(1:10)] %>% select(-id) %>% 
                    mutate_all(function(x){ifelse(x == 0, 0, 1)}))
   b <- lapply(b, function(x){melt_dist(as.matrix(x))})
   
@@ -309,7 +307,9 @@ data_beta <- data %>% group_by(taxon) %>%
             by = c("Landscape_1" = "Landscape")) %>%
   left_join(sites, 
             by = c("Landscape_2" = "Landscape"),
-            suffix = c("_Landscape_1", "_Landscape_2"))
+            suffix = c("_Landscape_1", "_Landscape_2")) %>%
+  mutate(beta.sim = ifelse(is.na(beta.sim), 0 , beta.sim),
+         beta.sne = ifelse(is.na(beta.sne), 0 , beta.sne))
 
 # beta-diversity by habitat type
 data_beta %>% filter(Transect_type_1 == Transect_type_2) %>% 
