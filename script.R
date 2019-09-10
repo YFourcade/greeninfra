@@ -6,6 +6,8 @@ library(visreg)
 library(harrietr)
 library(lmerTest)
 library(cowplot)
+library(MuMIn)
+# library(brms)
 
 ### import data ###
 
@@ -123,8 +125,10 @@ for(i in 1:3){
   dat.temp <- data %>% filter(taxon == unique(data$taxon)[[i]]) %>% 
     group_by(taxon, Landscape, Transect_type) %>% do(extract_shannon(.)) %>% left_join(sites)
   
-  print(knitr::kable(summary(lmer(shannon ~ Powerline * `Road Density` + (1|Transect_type) + (1|Landscape), 
-                                  data = dat.temp))$coefficients, digits = 3))
+  # print(knitr::kable(summary(lmer(shannon ~ Powerline * `Road Density` + (1|Transect_type) + (1|Landscape), 
+  #                                 data = dat.temp))$coefficients, digits = 3))
+  print(knitr::kable(car::Anova(lmer(shannon ~ Powerline * `Road Density` + (1|Transect_type) + (1|Landscape), 
+                                  data = dat.temp), type = 3), digits = 3))
   
 }
 
@@ -170,7 +174,7 @@ for(i in unique(data$taxon)){
     spread(key = Species, value = n) %>%
     filter(rowSums(.[,-c(1:5)]) > 0)
   
-  nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 100, maxit = 200)
+  nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 1000, maxit = 20000)
   
   # plot #
   # prepare scores
@@ -378,8 +382,8 @@ for(j in unique(c("beta.sim", "beta.sne", "beta.sor"))){
   )
   
   print(pairs(emmeans(lmer(value ~ Transect_type * taxon + (1|Landscape_1) + (1|Landscape_2), 
-                     data = dat.temp),
-                 ~ Transect_type | taxon)))
+                           data = dat.temp),
+                      ~ Transect_type | taxon)))
   
   cat("\n")
 }
@@ -428,19 +432,19 @@ for(j in unique(data.test.beta.by.landscape$taxon)){
   for(i in levels(data.test.beta.by.landscape$type)){
     if(i == "beta.sne"){
       test.beta.by.landscape <- lmer(log(beta+0.1) ~ Powerline * Road_density +
-                                       (1|Transect_type_1) + (1|Transect_type_2), 
+                                       (1|Landscape) + (1|Transect_type_1) + (1|Transect_type_2), 
                                      data =  data.test.beta.by.landscape %>% 
                                        filter(taxon == j, type == i),
                                      na.action = na.fail)}
     else{
       test.beta.by.landscape <- lmer(beta ~ Powerline * Road_density +
-                                       (1|Transect_type_1) + (1|Transect_type_2), 
+                                       (1|Landscape) + (1|Transect_type_1) + (1|Transect_type_2), 
                                      data =  data.test.beta.by.landscape %>% 
                                        filter(taxon == j, type == i),
                                      na.action = na.fail)
     }
-    print(paste("Type of beta-diversity :", i))
     print(paste("Taxon :", j))
+    print(paste("Type of beta-diversity :", i))
     print(knitr::kable(
       data.frame(summary(test.beta.by.landscape)$coefficients), digits= 3))
     
@@ -455,78 +459,134 @@ for(j in unique(data.test.beta.by.landscape$taxon)){
   for(i in levels(data.test.beta.by.landscape$type)){
     if(i == "beta.sne"){
       test.beta.by.landscape <- lmer(log(beta+0.1) ~ Powerline * Road_density * Grasslands +
-                                       (1|Transect_type_1) + (1|Transect_type_2), 
+                                       (1|Landscape) + (1|Transect_type_1) + (1|Transect_type_2), 
                                      data =  data.test.beta.by.landscape %>% 
-                                       filter(taxon == j, type == i) %>%
-                                       left_join(sites, by = c("Landscape", "Powerline")),
-                                     na.action = na.fail)}
-    else{
+                                       filter(taxon == j, type == i) %>% 
+                                       left_join(sites, 
+                                                 by = c("Landscape", "Powerline")),
+                                     na.action = na.fail)
+      }else{
       test.beta.by.landscape <- lmer(beta ~ Powerline * Road_density * Grasslands +
-                                       (1|Transect_type_1) + (1|Transect_type_2), 
+                                       (1|Landscape) + (1|Transect_type_1) + (1|Transect_type_2), 
                                      data =  data.test.beta.by.landscape %>% 
-                                       filter(taxon == j, type == i) %>%
-                                       left_join(sites, by = c("Landscape", "Powerline")),
+                                       filter(taxon == j, type == i) %>% 
+                                       left_join(sites, 
+                                                 by = c("Landscape", "Powerline")),
                                      na.action = na.fail)
     }
     print(paste("Taxon :", j))
     print(paste("Type of beta-diversity :", i))
     print(knitr::kable(
-      data.frame(summary(test.beta.by.landscape)$coefficients), digits= 3))
+      data.frame(car::Anova(test.beta.by.landscape, type = 3)), digits= 3))
     
-    car::qqPlot(residuals(test.beta.by.landscape), lwd=.5, main = paste(j, i))
-  }
+    car::qqPlot(residuals(test.beta.by.landscape), lwd=.5, main = paste(j, i))  }
 }
 par(mfrow = c(1,1))
 
 # illustrate effect of grassland
 # bumblebees
 quantile(data.test.beta.by.landscape %>% filter(taxon == "Bumblebees") %>% 
-           left_join(sites) %>% pull(Grasslands), probs = c(.1,.25,.5,.75))
+           left_join(sites) %>% pull(Grasslands), probs = c(.25,.5, .75))
 
-test.beta.by.landscape_BB <- lmer(beta ~ Powerline * Road_density * Grasslands +
-                                    (1|Transect_type_1) + (1|Transect_type_2), 
-                                  data =  data.test.beta.by.landscape %>% 
-                                    filter(taxon == "Bumblebees", type == "beta.sor") %>%
-                                    left_join(sites),
-                                  na.action = na.fail)
+dat <- data.test.beta.by.landscape %>% 
+  filter(taxon == "Bumblebees", type == "beta.sor") %>%
+  left_join(sites)
 
-dat1 <- (visreg(test.beta.by.landscape_BB, xvar = "Powerline", by = "Road_density", 
-                cond = list(Grasslands = 0.013), plot = F))$fit
-dat2 <- (visreg(test.beta.by.landscape_BB, xvar = "Powerline", by = "Road_density", 
-                cond = list(Grasslands = 0.024), plot = F))$fit
-dat3 <- (visreg(test.beta.by.landscape_BB, xvar = "Powerline", by = "Road_density", 
-                cond = list(Grasslands = 0.038), plot = F))$fit
 
-bind_rows(Low = dat1, Medium = dat2, High = dat3, .id = "Grassland cover") %>%
-  mutate(`Grassland cover`  = factor(`Grassland cover`, levels = c("Low", "Medium", "High"))) %>%
-  ggplot(aes(y = visregFit, x = Powerline, color = Road_density)) + 
+# test.beta.by.landscape_BB <- brm(beta ~ Powerline * Road_density * Grasslands +
+#                                     (1|Landscape),
+#                                     data = dat,
+#                                  cores = 4)
+# 
+# p <- marginal_effects(test.beta.by.landscape_BB, effects = "Powerline:Road_density",
+#                  conditions = data.frame(Grasslands = c(low=0.013, medium = 0.024, high=0.038)))
+# 
+# p$`Powerline:Road_density` %>%
+#   ggplot(aes(y = estimate__, x = Powerline, color = Road_density,
+#              ymin = estimate__-se__, ymax = estimate__+se__)) + 
+#   geom_point(size = 3, position = position_dodge(width = .2)) +
+#   geom_line(aes(group = Road_density), position = position_dodge(width = .2)) +
+#   geom_errorbar(width = 0, position = position_dodge(width = .2)) +
+#   facet_grid( ~ cond__, scale = "free") +
+#   scale_x_discrete("Presence of powerline") + 
+#   scale_y_continuous("Beta-diversity") +
+#   scale_color_discrete("Road density") +
+#   ggtitle("Area of grassland") +
+#   theme_bw()
+
+test.beta.by.landscape_BB.lmer <- lmer(beta ~ Powerline * Road_density * Grasslands +
+                                   (1|Landscape) + (1|Transect_type_1) + (1|Transect_type_2),
+                                 data = dat)
+
+new <- expand.grid(Road_density = c("high", "low"),
+                  Powerline = c("Yes", "No"),
+                  Grasslands = c(0.013, 0.024, 0.038)) %>%
+  mutate(Road_density = as.character(Road_density),
+         Powerline = as.character(Powerline),
+         Grasslands = as.numeric(Grasslands))
+
+dat.pred <- predict(test.beta.by.landscape_BB.lmer,
+                newdata = new, re.form = ~ 0, se = T)
+dat.pred <- cbind.data.frame(new, fit = dat.pred$fit, se = dat.pred$se.fit)
+
+dat.pred %>%
+  mutate(Grasslands = ifelse(Grasslands == 0.013, "Low", ifelse(Grasslands == 0.024, "Medium", "High"))) %>%
+  mutate(Grasslands = factor(Grasslands, levels = c("Low", "Medium", "High"))) %>%
+  ggplot(aes(y = fit, x = Powerline, color = Road_density,
+             ymin = fit-se, ymax = fit+se)) + 
   geom_point(size = 3, position = position_dodge(width = .2)) +
   geom_line(aes(group = Road_density), position = position_dodge(width = .2)) +
-  geom_errorbar(aes(ymin = visregLwr, ymax = visregUpr), width = 0, position = position_dodge(width = .2)) +
-  facet_grid( ~ `Grassland cover`, scale = "free") +
+  geom_errorbar(width = 0, position = position_dodge(width = .2)) +
+  facet_grid( ~ Grasslands, scale = "free") +
   scale_x_discrete("Presence of powerline") + 
   scale_y_continuous("Beta-diversity") +
   scale_color_discrete("Road density") +
+  ggtitle("Bumblebees - Model predictions by area of grassland") +
   theme_bw()
 
-pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(Grasslands = 0.013)))
-pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(Grasslands = 0.024)))
-pairs(emmeans(test.beta.by.landscape_BB, ~ Powerline | Road_density, at = list(Grasslands = 0.038)))
+ggsave("effect.of.grassland.and.landscape.svg", width = 8, height = 3)
+
+
+pairs(emmeans(test.beta.by.landscape_BB.lmer, ~ Powerline | Road_density, at = list(Grasslands = 0.011)))
+pairs(emmeans(test.beta.by.landscape_BB.lmer, ~ Powerline | Road_density, at = list(Grasslands = 0.024)))
+pairs(emmeans(test.beta.by.landscape_BB.lmer, ~ Powerline | Road_density, at = list(Grasslands = 0.038)))
 
 # butterflies
+dat <- data.test.beta.by.landscape %>% 
+  filter(taxon == "Butterflies", type == "beta.sor") %>%
+  left_join(sites)
+
 test.beta.by.landscape_But <- lmer(beta ~ Powerline * Road_density * Grasslands +
-                                     (1|Transect_type_1) + (1|Transect_type_2), 
-                                   data =  data.test.beta.by.landscape %>% 
-                                     filter(taxon == "Butterflies", type == "beta.sor") %>%
-                                     left_join(sites),
-                                   na.action = na.fail)
+                                     (1|Landscape) + (1|Transect_type_1) + (1|Transect_type_2),
+                                   data =  dat)
 
-visreg(test.beta.by.landscape_But, xvar = "Road_density", by = "Grasslands", at = c(0.013,0.024,0.038), gg = T)
+new <- expand.grid(Road_density = c("high", "low"),
+                   Powerline = c("Yes", "No"),
+                   Grasslands = c(0.013, 0.024, 0.038)) %>%
+  mutate(Road_density = as.character(Road_density),
+         Powerline = as.character(Powerline),
+         Grasslands = as.numeric(Grasslands))
 
+dat.pred <- predict(test.beta.by.landscape_But,
+                    newdata = new, re.form = ~ 0, se = T)
+dat.pred <- cbind.data.frame(new, fit = dat.pred$fit, se = dat.pred$se.fit)
 
-pairs(emmeans(test.beta.by.landscape_But, ~ Road_density, at = list(Grasslands = 0.013)))
-pairs(emmeans(test.beta.by.landscape_But, ~ Road_density, at = list(Grasslands = 0.024)))
-pairs(emmeans(test.beta.by.landscape_But, ~ Road_density, at = list(Grasslands = 0.038)))
+dat.pred %>%
+  mutate(Grasslands = ifelse(Grasslands == 0.013, "Low", ifelse(Grasslands == 0.024, "Medium", "High"))) %>%
+  mutate(Grasslands = factor(Grasslands, levels = c("Low", "Medium", "High"))) %>%
+  ggplot(aes(y = fit, x = Powerline, color = Road_density,
+             ymin = fit-se, ymax = fit+se)) + 
+  geom_point(size = 3, position = position_dodge(width = .2)) +
+  geom_line(aes(group = Road_density), position = position_dodge(width = .2)) +
+  geom_errorbar(width = 0, position = position_dodge(width = .2)) +
+  facet_grid( ~ Grasslands, scale = "free") +
+  scale_x_discrete("Presence of powerline") + 
+  scale_y_continuous("Beta-diversity") +
+  scale_color_discrete("Road density") +
+  ggtitle("Butterflies - Model predictions by area of grassland") +
+  theme_bw()
+
+ggsave("effect.of.grassland.and.landscape.butterflies.svg", width = 8, height = 3)
 
 
 
@@ -535,8 +595,10 @@ pairs(emmeans(test.beta.by.landscape_But, ~ Road_density, at = list(Grasslands =
 #######################
 gdata::keep(sites,
             data, 
+            extract_shannon,
             dat.shannon,
             ndms.plots,
+            extract_beta,
             data_beta, 
             beta.labs,
             sure = T)
