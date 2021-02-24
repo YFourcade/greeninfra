@@ -567,7 +567,7 @@ p.land <- ggplot() +
   scale_color_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
   scale_fill_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
   scale_shape_discrete("Landscape type") +
-  theme_bw()
+  theme_minimal()
 
 ggsave2("p.land.svg", p.land, width = 10)
 
@@ -646,7 +646,7 @@ plot.land.beta <- beta.land %>%
              labeller = labeller(Type = beta.labs)) +
   scale_x_discrete("Presence of powerline") + 
   scale_y_continuous("Beta-diversity among all transects in each landscape type\n(Based on Sorensen dissimilarity)") + 
-  theme_bw() +
+  theme_minimal() +
   theme(legend.position = c(.9,.2),
         legend.background = element_blank(),
         legend.box.background = element_rect(colour = "black"))
