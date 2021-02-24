@@ -170,7 +170,7 @@
 <text x='35.19' y='63.99' text-anchor='end' style='font-size: 8.80px; fill: #4D4D4D; font-family: Arial;' textLength='4.90px' lengthAdjust='spacingAndGlyphs'>4</text>
 <text x='269.32' y='280.20' text-anchor='middle' style='font-size: 11.00px; font-family: Arial;' textLength='108.87px' lengthAdjust='spacingAndGlyphs'>Presence of powerline</text>
 <text transform='translate(13.36,139.45) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: Arial;' textLength='143.72px' lengthAdjust='spacingAndGlyphs'>Species diversity per transect</text>
-<text transform='translate(25.24,139.45) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: Arial;' textLength='169.75px' lengthAdjust='spacingAndGlyphs'>(Shannon index, mean +/- 95% CI)</text>
+<text transform='translate(25.24,139.45) rotate(-90)' text-anchor='middle' style='font-size: 11.00px; font-family: Arial;' textLength='80.75px' lengthAdjust='spacingAndGlyphs'>(Shannon index)</text>
 <rect x='415.09' y='179.09' width='75.18' height='61.19' style='stroke-width: 0.75; fill: #FFFFFF;' />
 <text x='420.57' y='193.60' style='font-size: 11.00px; font-family: Arial;' textLength='64.22px' lengthAdjust='spacingAndGlyphs'>Road density</text>
 <polyline points='429.21,215.79 429.21,213.20 ' style='stroke-width: 1.07; stroke: #333333;' />
