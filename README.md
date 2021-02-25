@@ -52,7 +52,6 @@ Here it does not make much sense to compare total diversity in powerline habitat
 
 #### Alpha diversity
 
-Note: in the results below, what is presented as "ANOVA" is actually computed as linear mixed models with the identity of the landscape as random intercept. 
 
 *Mean species richness (and standard deviation) per habitat type, for each taxon*: 
 
@@ -79,16 +78,17 @@ Note: in the results below, what is presented as "ANOVA" is actually computed as
 
 ![Fig. 3](plot.SR.hab.alpha.svg)
 
-ANOVA to test whether species richness significantly differs between habitat types:
+Generalised linear mixed model (with Poisson error and landscape id as random intercept) to test whether species richness significantly differs between habitat types:
 
-|Taxon      |  Sum Sq| Mean Sq| NumDF|  DenDF| F value| Pr(>F)|
-|:----------|-------:|-------:|-----:|------:|-------:|------:|
-|Bumblebees                                                   |
-|           |   30.80|    7.70|     4| 100.49|    1.69|   0.16|
-|Butterflies                                                  |   
-|           |  555.13|  138.78|     4| 102.83|   10.61|   0.00|
-|Plants                                                       |
-|           | 1004.03|  251.01|     4|  99.03|   14.02|   0.00|
+|Taxon       | Chisq| Df| Pr(>Chisq)|
+|:-----------|-----:|--:|----------:|
+|Bumblebees                         |
+|            |  7.25|  4|       0.12|
+|Butterflies                        |   
+|            | 62.18|  4|       0.00|
+|Plants                             |
+|            | 60.35|  4|       0.00|
+
 
 There is clearly a difference between habitat types in terms of species richness for butterflies and plants, but not for bumblebees.
 
@@ -97,26 +97,27 @@ Because there may be additional factors that influence species richness with tra
 |Taxon       |Variables               | Chisq| Df| Pr(>Chisq)|
 |:-----------|:-----------------------|-----:|--:|----------:|
 |Bumblebees                               					         |
-|            |Habitat type            |  6.73|  4|       0.15|
-|            |Prop. open area         |  0.00|  1|       0.98|
-|            |Land. diversity         |  0.00|  1|       0.95|
-|            |Powerline               |  0.02|  1|       0.90|
-|            |Road density            |  1.12|  1|       0.29|
-|            |Powerline x Road density|  0.12|  1|       0.73|
+|            |Habitat type            |  7.17|  4|       0.13|
+|            |Prop. open area         |  0.00|  1|       0.96|
+|            |Land. diversity         |  0.01|  1|       0.94|
+|            |Powerline               |  0.00|  1|       0.96|
+|            |Road density            |  1.20|  1|       0.27|
+|            |Powerline x Road density|  0.10|  1|       0.75|
 |Butterflies                                                 |
-|            |Habitat type            | 40.31|  4|       0.00|
-|            |Prop. open area         |  1.76|  1|       0.18|
-|            |Land. diversity         |  0.18|  1|       0.67|
-|            |Powerline               |  1.24|  1|       0.27|
-|            |Road density            |  0.38|  1|       0.54|
-|            |Powerline x Road density|  3.24|  1|       0.07|
+|            |Habitat type            | 59.85|  4|       0.00|
+|            |Prop. open area         |  1.97|  1|       0.16|
+|            |Land. diversity         |  0.19|  1|       0.67|
+|            |Powerline               |  1.09|  1|       0.30|
+|            |Road density            |  0.43|  1|       0.51|
+|            |Powerline x Road density|  3.62|  1|       0.06|
 |Plants                                                      |                          
-|            |Habitat type            | 55.04|  4|       0.00|
-|            |Prop. open area         |  0.14|  1|       0.71|
-|            |Land. diversity         |  0.18|  1|       0.67|
-|            |Powerline               |  1.84|  1|       0.17|
+|            |Habitat type            | 59.66|  4|       0.00|
+|            |Prop. open area         |  0.18|  1|       0.67|
+|            |Land. diversity         |  0.12|  1|       0.73|
+|            |Powerline               |  2.52|  1|       0.11|
 |            |Road density            |  0.00|  1|       0.97|
-|            |Powerline x Road density|  0.01|  1|       0.92|
+|            |Powerline x Road density|  0.02|  1|       0.88|
+
 
 The previous results remain the same; there no additional effect of any of the other variables.
 

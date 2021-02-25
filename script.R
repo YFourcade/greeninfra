@@ -137,14 +137,14 @@ ggsave2("plot.sh.hab.alpha.svg", plot.sh.hab.alpha, width = 7, height = 4)
 
 res_aov_alpha_hab <- c()
 for(i in unique(data$taxon)){
-  m <- lmer(S ~ Transect_type + (1|Landscape),
+  m <- glmer(S ~ Transect_type + (1|Landscape), family = poisson,
             data = dat.SR.alpha  %>% filter(taxon == i) %>% left_join(site_data))
   
   cat("\n#==============#\n")
   cat(paste("  ", i, "\n"))
   cat("#==============#\n")
   res_aov_alpha_hab <- rbind.data.frame(res_aov_alpha_hab, 
-                                        cbind.data.frame(Taxon = i, anova(m)))
+                                        cbind.data.frame(Taxon = i, car::Anova(m)))
   
 }
 
@@ -158,8 +158,8 @@ for(i in unique(data$taxon)){
     left_join(site_data) %>% 
     left_join(site_data %>% pivot_longer(cols = c(10:20), names_to = "type", values_to = "proportion") %>% 
                 group_by(Landscape) %>% summarise(div.land = diversity(proportion)))
-  m <- lmer(S ~ Transect_type + Open_areas + div.land + 
-              PL * RD + (1|Landscape),
+  m <- glmer(S ~ Transect_type + Open_areas + div.land + 
+              PL * RD + (1|Landscape), family = poisson,
             data = data.temp)
   
   cat("\n#==============#\n")
