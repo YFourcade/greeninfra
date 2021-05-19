@@ -6,6 +6,8 @@ library(lmerTest)
 library(cowplot)
 library(knitr)
 
+source("AICc_PERMANOVA.R")
+
 ### import data ###
 site_data <- read.csv2("../Data/database.PD.taxalabels.csv")
 
@@ -137,14 +139,14 @@ ggsave2("plot.sh.hab.alpha.svg", plot.sh.hab.alpha, width = 7, height = 4)
 
 res_aov_alpha_hab <- c()
 for(i in unique(data$taxon)){
-  m <- glmer(S ~ Transect_type + (1|Landscape), family = poisson,
+  m <- lmer(S ~ Transect_type + (1|Landscape),
             data = dat.SR.alpha  %>% filter(taxon == i) %>% left_join(site_data))
   
   cat("\n#==============#\n")
   cat(paste("  ", i, "\n"))
   cat("#==============#\n")
   res_aov_alpha_hab <- rbind.data.frame(res_aov_alpha_hab, 
-                                        cbind.data.frame(Taxon = i, car::Anova(m)))
+                                        cbind.data.frame(Taxon = i, anova(m)))
   
 }
 
@@ -158,8 +160,8 @@ for(i in unique(data$taxon)){
     left_join(site_data) %>% 
     left_join(site_data %>% pivot_longer(cols = c(10:20), names_to = "type", values_to = "proportion") %>% 
                 group_by(Landscape) %>% summarise(div.land = diversity(proportion)))
-  m <- glmer(S ~ Transect_type + Open_areas + div.land + 
-              PL * RD + (1|Landscape), family = poisson,
+  m <- lmer(S ~ Transect_type + Open_areas + div.land + 
+              PL * RD + (1|Landscape),
             data = data.temp)
   
   cat("\n#==============#\n")
@@ -310,18 +312,47 @@ res_perm_alpha_hab %>% kable(format = "pipe", digits = 2)
 
 # PERMANOVA to test if species composition varies by habitat type, landscape type, landscape diversity and amount of open habitat
 res_perm_alpha_hab2 <- c()
+aic_res <- c()
 for(i in unique(data$taxon)){
   data.temp <- data %>% filter(taxon == i) %>% 
     select(taxon, Landscape, Transect_type, Species, Indiv) %>% 
     pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
-    left_join(site_data) %>% 
-    left_join(site_data %>% pivot_longer(cols = c(10:20), names_to = "type", values_to = "proportion") %>% 
-                group_by(Landscape) %>% summarise(div.land = diversity(proportion)))
+    left_join(site_data)
   
   a <- adonis(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
-                Landscape + Transect_type + Open_areas + div.land + PL * RD,
+                Transect_type + scale(TUVA) + PL + RD, 
+              strata= data.temp$Landscape,
               data = data.temp,
-              permutations = 9999)
+              permutations = 999)
+  a1 <- update(a, ~ .+ PL:RD)
+  a2 <- update(a, ~ .+ scale(TUVA):RD)
+  a3 <- update(a, ~ .+ Transect_type:scale(TUVA))
+  a4 <- update(a, ~ .+ Transect_type:RD)
+  a5 <- update(a, ~ .+ Transect_type:PL)
+  a6 <- update(a, ~ .+ scale(TUVA):PL)
+  
+  aic_res <- rbind.data.frame(
+    aic_res,
+    cbind.data.frame(
+      Taxon = i,
+      model = c('no_interaction',
+                "interaction_PL:RD",
+                "interaction_TUVA:RD",
+                "interaction_Transect_type:TUVA",
+                "interaction_Transect_type:RD",
+                "interaction_Transect_type:PL",
+                "interaction_TUVA:PL"),
+      AICc = unlist(
+        lapply(list(a,a1,a2,a3,a5,a5,a6), function(x){AICc.PERMANOVA(x)$AICc})
+      )
+    )
+  )
+  
+  # b <- cca(data.temp[,4:(grep("Category", names(data.temp))-1)] ~
+  #            Landscape + Transect_type + scale(TUVA) + PL + RD ,
+  #          data = data.temp)
+  # 
+  # anova.cca(b, by = 'margin')
   
   cat("\n#==============#\n")
   cat(paste("  ", i, "\n"))
@@ -334,8 +365,12 @@ for(i in unique(data$taxon)){
     )
   )
 }
+aic_res <- aic_res %>% 
+  group_by(Taxon) %>% 
+  mutate(delta = qpcR::akaike.weights(AICc)$deltaAIC)
 
-res_perm_alpha_hab2 %>% kable(format = "pipe", digits = 2)
+res_perm_alpha_hab2 %>% kable(format = "pipe", digits = 3)
+aic_res %>% kable(format = "pipe", digits = 3)
 
 # cluster analysis
 svg("cluster_hab.svg", width = 8, height = 4)
@@ -352,7 +387,7 @@ for(i in unique(data$taxon)){
 }
 dev.off()
 
-# beta-diversity
+# beta-diversity within habitats
 beta.habType <- c()
 for(i in unique(data$taxon)){
   for(j in unique(data$Transect_type)){
@@ -387,6 +422,63 @@ plot.hab.beta <- beta.habType %>%
 
 ggsave2("plot.hab.beta.svg", plot.hab.beta, width = 6.5, height = 5.5)
 
+
+# beta-diversity between habitats
+beta.pair <- c()
+beta.tot <- c()
+for(i in unique(data$taxon)){
+  data_bet.temp <- data %>% ungroup %>% filter(taxon == i) %>% 
+    group_by(Transect_type, Species) %>% 
+    summarise(Indiv = n()) %>% 
+    mutate(Indiv = ifelse(Indiv > 0, 1, 0)) %>% 
+    pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
+    ungroup
+  
+  bet.temp.tot <- data_bet.temp %>% select(-1) %>% beta.multi(.)
+  bet.temp.tot <- bet.temp.tot %>% as_tibble %>% 
+    mutate(taxon = i) %>% 
+    pivot_longer(cols = 1:3, names_to = "Type", values_to = "beta")
+  beta.tot <- rbind.data.frame(beta.tot, bet.temp.tot)
+  
+  bet.temp.pair <- data_bet.temp %>% select(-1) %>% beta.pair(.) %>% lapply(.,as.matrix)
+  bet.temp.pair <- bet.temp.pair %>% lapply(.,function(x){colnames(x) = data_bet.temp$Transect_type; rownames(x) = data_bet.temp$Transect_type; x})
+  
+  bet.temp.pair <- lapply(bet.temp.pair, function(x){y <- data.frame(rows=rownames(x)[row(x)], vars=colnames(x)[col(x)],
+                                                                     beta=c(x));y}) %>% 
+    bind_rows(.,  .id = "Type") %>% 
+    mutate(taxon = i)
+  beta.pair <- rbind.data.frame(beta.pair, bet.temp.pair)
+}
+
+beta.tot$Type <- as.factor(beta.tot$Type)
+levels(beta.tot$Type) <- c("Turnover", "Nestedness", "Total")
+
+beta.tot %>% filter(Type != "Total") %>% ggplot(aes(x = taxon, y = beta, fill = Type)) + 
+  geom_bar(stat = 'identity') +
+  scale_y_continuous("Overall beta-diversity\nbetween habitat types") +
+  scale_x_discrete("") +
+  scale_fill_manual("", values = c("#B22222", "#00BFFF")) +
+  theme_minimal() 
+
+ggsave("./overall_beta_habitats.svg", width = 4.5, height = 3.5)
+
+beta.pair$Type <- as.factor(beta.pair$Type)
+levels(beta.pair$Type) <- c("Turnover", "Nestedness", "Total")
+beta.pair %>% filter(!rows == vars) %>% 
+  ggplot(aes(x=rows, y=vars, fill=beta, label = round(beta,2))) +
+  facet_grid(taxon ~ Type) +
+  geom_tile() +
+  geom_text(size = 2.5, col = "white") +
+  scale_x_discrete("") +
+  scale_y_discrete("") +
+  scale_fill_gradient(low = "blue", high = "red") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust=1),
+        legend.pos = "none",
+        strip.background = element_rect(colour=NA, fill=NA)) +
+  coord_fixed()
+
+ggsave("./pairwise_beta_habitats.svg", width = 6, height = 6)
 
 # ============================================ #
 #   Analyses at the scale of landscape types   #
@@ -466,7 +558,7 @@ dat.SR.land.alpha <- data %>% filter(!Transect_type %in% "Powerline") %>%
             Powerline = unique(Powerline))
 
 dat.SR.land.alpha %>% 
-   group_by(taxon, Powerline, `Road density`) %>% 
+  group_by(taxon, Powerline, `Road density`) %>% 
   summarise(S.mean = mean(S), S.SD = sd(S)) %>% 
   kable(format = "pipe", digits = 2)
 
