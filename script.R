@@ -226,15 +226,18 @@ ndms.plots.hab <- c()
 for(i in unique(data$taxon)){
   data.nmds <- data %>% filter(taxon == i) %>% 
     select(taxon, Landscape, Transect_type, Species, Indiv) %>% 
-    pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0)
+    pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
+    left_join(site_data)
   
-  nmds <- metaMDS(data.nmds[,-c(1:3)], trymax = 1000, maxit = 20000)
+  nmds <- metaMDS(data.nmds[,-c(1:3, (ncol(data.nmds)-19):ncol(data.nmds))], trymax = 1000, maxit = 20000)
   
   # plot #
   # prepare scores
   nmds.scores <- as.data.frame(scores(nmds))
   nmds.scores$site <- rownames(nmds.scores)
   nmds.scores$habitat <- factor(data.nmds$Transect_type, levels = trans_type)
+  nmds.scores$RD <- data.nmds$RD
+  nmds.scores$TUVA <- data.nmds$TUVA
   
   # create hull polygons
   
@@ -261,11 +264,20 @@ for(i in unique(data$taxon)){
   
   hull.habitat$habitat <- factor(hull.habitat$habitat, levels = trans_type)
   
+  # RD
+  RD.0 <- nmds.scores[nmds.scores$RD == 
+                        0, ][chull(nmds.scores[nmds.scores$RD == 0, c("NMDS1", "NMDS2")]), ] 
+  RD.1 <- nmds.scores[nmds.scores$RD == 
+                        1, ][chull(nmds.scores[nmds.scores$RD == 1, c("NMDS1", "NMDS2")]), ] 
+  
+  hull.RD <- rbind(RD.0, RD.1) 
+  
   ndms.plots.hab <- rbind.data.frame(ndms.plots.hab, 
                                      cbind.data.frame(taxon = i,
                                                       rbind.data.frame(
                                                         cbind.data.frame(what = "hull.habitat", hull.habitat),
-                                                        cbind.data.frame(what = "scores", nmds.scores)
+                                                        cbind.data.frame(what = "scores", nmds.scores),
+                                                        cbind.data.frame(what = "hull.RD", hull.RD)
                                                       )
                                      )
   )
@@ -285,6 +297,22 @@ p.hab <- ggplot() +
   theme_minimal() 
 
 ggsave2("p.hab.svg", p.hab, width = 10)
+
+p.env <- ggplot() + 
+  geom_polygon(data=ndms.plots.hab[ndms.plots.hab$what == "hull.RD",] %>% 
+                 mutate(RD = ifelse(RD == 0, "Low road density", "High road density")),
+               aes(x=NMDS1,y=NMDS2,fill=as.factor(RD)),alpha=0.25) + # add the convex hulls
+  # geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
+  geom_point(data=ndms.plots.hab[ndms.plots.hab$what == "scores",],
+             aes(x=NMDS1,y=NMDS2,colour=TUVA),size=1) + # add the point markers
+  facet_grid(~ taxon) +
+  scale_colour_gradient("Proportion of\nTUVA grassands", low = c("#EE2C2C"), high = c("#458B00")) +
+  scale_fill_discrete("") +
+  coord_equal() +
+  theme_minimal() 
+
+ggsave2("p.env.svg", p.env, width = 10)
+
 
 # PERMANOVA to test if species composition varies by habitat type 
 res_perm_alpha_hab <- c()
@@ -320,7 +348,7 @@ for(i in unique(data$taxon)){
     left_join(site_data)
   
   a <- adonis(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
-                Transect_type + scale(TUVA) + PL + RD, 
+                Transect_type + PL + RD + scale(TUVA), 
               strata= data.temp$Landscape,
               data = data.temp,
               permutations = 999)
@@ -371,6 +399,9 @@ aic_res <- aic_res %>%
 
 res_perm_alpha_hab2 %>% kable(format = "pipe", digits = 3)
 aic_res %>% kable(format = "pipe", digits = 3)
+
+
+
 
 # cluster analysis
 svg("cluster_hab.svg", width = 8, height = 4)
@@ -480,270 +511,270 @@ beta.pair %>% filter(!rows == vars) %>%
 
 ggsave("./pairwise_beta_habitats.svg", width = 6, height = 6)
 
-# ============================================ #
-#   Analyses at the scale of landscape types   #
-# ============================================ #
-# remember to exclude powerline habitats for comparison 
-
-## gamma-diversity ##
-# species richness
-dat.SR.land.gamma <- data %>% filter(!Transect_type %in% "Powerline") %>% 
-  select(taxon, `Road density`, Powerline, Species, Indiv) %>% 
-  group_by(taxon, `Road density`, Powerline) %>% 
-  summarise(S = length(unique(Species)))
-
-dat.SR.land.gamma %>% ungroup %>% 
-  mutate(
-    Landscape_type = paste(
-      ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
-      "/",
-      ifelse(`Road density` == 'Low', "Low road density", "High road density"))
-  ) %>%  select(1,4, 5) %>% 
-  pivot_wider(names_from = Landscape_type, values_from = S) %>%
-  kable(format = "pipe")
-
-plot.SR.land.gamma <- dat.SR.land.gamma %>%
-  ungroup %>%
-  ggplot(aes(x = Powerline, y = S, color = `Road density`)) + 
-  geom_point(size = 3) + 
-  geom_line(aes(group = `Road density`)) + 
-  facet_grid(~taxon) +
-  scale_x_discrete("Presence of powerline") + 
-  scale_y_continuous("Total species richness") + 
-  theme_minimal() + 
-  theme(legend.position = c(.9,.2),
-        legend.background = element_blank(),
-        legend.box.background = element_rect(colour = "black"))
-
-ggsave2("plot.SR.land.gamma.svg", plot.SR.land.gamma, width = 7, height = 4)
-
-# Shannon index
-dat.shannon.land.gamma <- data %>% filter(!Transect_type %in% "Powerline") %>%
-  select(taxon, `Road density`, Powerline, Species, Indiv) %>% 
-  group_by(taxon, `Road density`, Powerline) %>% 
-  summarise(shannon = diversity(Indiv))
-
-dat.shannon.land.gamma %>% ungroup %>% 
-  mutate(
-    Landscape_type = paste(
-      ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
-      "/",
-      ifelse(`Road density` == 'Low', "Low road density", "High road density"))
-  ) %>%  select(1,4, 5) %>% 
-  pivot_wider(names_from = Landscape_type, values_from = shannon) %>%
-  kable(format = "pipe", digits = 2)
-
-plot.sh.land.gamma <- dat.shannon.land.gamma %>%
-  ungroup %>%
-  ggplot(aes(x = Powerline, y = shannon, color = `Road density`)) + 
-  geom_point(size = 3) + 
-  geom_line(aes(group = `Road density`)) + 
-  facet_grid(~taxon) +
-  scale_x_discrete("Presence of powerline") + 
-  scale_y_continuous("Total species diversity (Shannon index)") + 
-  theme_minimal() + 
-  theme(legend.position = c(.9,.2),
-        legend.background = element_blank(),
-        legend.box.background = element_rect(colour = "black"))
-
-ggsave2("plot.sh.land.gamma.svg", plot.sh.land.gamma, width = 7, height = 4)
-
-## alpha-diversity ##
-# species richness
-dat.SR.land.alpha <- data %>% filter(!Transect_type %in% "Powerline") %>% 
-  select(taxon, Landscape, `Road density`, Powerline, Species, Indiv) %>% 
-  group_by(taxon, Landscape) %>% 
-  summarise(S = length(unique(Species)), 
-            `Road density` = unique(`Road density`), 
-            Powerline = unique(Powerline))
-
-dat.SR.land.alpha %>% 
-  group_by(taxon, Powerline, `Road density`) %>% 
-  summarise(S.mean = mean(S), S.SD = sd(S)) %>% 
-  kable(format = "pipe", digits = 2)
-
-plot.SR.land.alpha <- dat.SR.land.alpha %>%
-  ggplot(aes(x = Powerline, y = S, fill = `Road density`)) + 
-  geom_boxplot() + 
-  facet_grid(~taxon) +
-  scale_x_discrete("Presence of powerline") + 
-  scale_y_continuous("Species richness per transect") + 
-  theme_minimal() +
-  theme(legend.position = c(.9,.2),
-        legend.background = element_blank(),
-        legend.box.background = element_rect(colour = "black"))
-
-ggsave2("plot.SR.land.alpha.svg", plot.SR.land.alpha, width = 7, height = 4)
-
-# Shannon index
-dat.shannon.land.alpha <- data %>% filter(!Transect_type %in% "Powerline") %>%
-  select(taxon, Landscape, `Road density`, Powerline, Species, Indiv) %>% 
-  group_by(taxon, Landscape, `Road density`, Powerline) %>% 
-  summarise(shannon = diversity(Indiv))
-
-dat.shannon.land.alpha %>% 
-  group_by(taxon, Powerline, `Road density`) %>% 
-  summarise(shannon.mean = mean(shannon), shannon.sd = sd(shannon)) %>% 
-  kable(format = "pipe", digits = 2)
-
-plot.sh.land.alpha <- dat.shannon.land.alpha %>%
-  ggplot(aes(x = Powerline, y = shannon, fill = `Road density`)) + 
-  geom_boxplot() + 
-  facet_grid(~taxon) +
-  scale_x_discrete("Presence of powerline") + 
-  scale_y_continuous("Species diversity per transect\n(Shannon index)") + 
-  theme_minimal() +
-  theme(legend.position = c(.9,.2),
-        legend.background = element_blank(),
-        legend.box.background = element_rect(colour = "black"))
-
-ggsave2("plot.sh.land.alpha.svg", plot.sh.land.alpha, width = 7, height = 4)
-
-## differences btw. landscapes, a.k.a. beta-diversity ##
-
-# visualization via NMDS
-ndms.plots.land <- c()
-for(i in unique(data$taxon)){
-  data.nmds <- data %>% filter(taxon == i, !Transect_type %in% "Powerline") %>% 
-    select(taxon, Landscape, Transect_type, Powerline, `Road density`, Species, Indiv) %>% 
-    pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0)
-  
-  nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 1000, maxit = 20000)
-  
-  # plot #
-  # prepare scores
-  nmds.scores <- as.data.frame(scores(nmds))
-  nmds.scores$site <- rownames(nmds.scores)
-  nmds.scores$landscape <- paste(ifelse(data.nmds$Powerline == "Yes", "Powerline", "No powerline"), 
-                                 "/",
-                                 ifelse(data.nmds$`Road density` == 'Low', "Low road density", "High road density"))
-  
-  # create hull polygons
-  
-  # landscape
-  landscape.1 <- nmds.scores[nmds.scores$landscape == 
-                               "Powerline / Low road density", ][chull(nmds.scores[nmds.scores$landscape == 
-                                                                                     "Powerline / Low road density", c("NMDS1", "NMDS2")]), ] 
-  landscape.2 <- nmds.scores[nmds.scores$landscape == 
-                               "Powerline / High road density", ][chull(nmds.scores[nmds.scores$landscape == 
-                                                                                      "Powerline / High road density", c("NMDS1", "NMDS2")]), ] 
-  landscape.3 <- nmds.scores[nmds.scores$landscape == 
-                               "No powerline / Low road density", ][chull(nmds.scores[nmds.scores$landscape == 
-                                                                                        "No powerline / Low road density", c("NMDS1", "NMDS2")]), ] 
-  landscape.4 <- nmds.scores[nmds.scores$landscape == 
-                               "No powerline / High road density", ][chull(nmds.scores[nmds.scores$landscape == 
-                                                                                         "No powerline / High road density", c("NMDS1", "NMDS2")]), ] 
-  hull.landscape <- rbind(landscape.1, landscape.2) 
-  hull.landscape <- rbind(hull.landscape, landscape.3) 
-  hull.landscape <- rbind(hull.landscape, landscape.4) 
-  
-  ndms.plots.land <- rbind.data.frame(
-    ndms.plots.land, 
-    cbind.data.frame(
-      taxon = i,
-      rbind.data.frame(
-        cbind.data.frame(what = "hull.landscape", hull.landscape),
-        cbind.data.frame(what = "scores", nmds.scores)
-      )
-    )
-  )
-}
-
-p.land <- ggplot() + 
-  geom_polygon(data=ndms.plots.land[ndms.plots.land$what == "hull.landscape",],
-               aes(x=NMDS1,y=NMDS2,fill=landscape ,group=landscape ),alpha=0.25) + # add the convex hulls
-  geom_point(data=ndms.plots.land[ndms.plots.land$what == "scores",],
-             aes(x=NMDS1,y=NMDS2,shape=landscape,colour=landscape),size=1) + # add the point markers
-  facet_grid(~ taxon) +
-  coord_equal() +
-  scale_color_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
-  scale_fill_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
-  scale_shape_discrete("Landscape type") +
-  theme_minimal()
-
-ggsave2("p.land.svg", p.land, width = 10)
-
-# PERMANOVA to test if species composition varies by landscape type 
-for(i in unique(data$taxon)){
-  data.temp <- data %>% filter(taxon == i, !Transect_type %in% "Powerline") %>% 
-    select(taxon, Landscape, Powerline, Transect_type, `Road density`, Species, Indiv) %>% 
-    pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0)
-  
-  a <- adonis(data.temp[,-c(1:5)] ~ Powerline + `Road density` + Landscape + Transect_type,
-              data = data.temp,
-              permutations = 999)
-  
-  cat("\n#==============#\n")
-  cat(paste("  ", i, "\n"))
-  cat("#==============#\n")
-  print(a)
-  
-}
-
-# cluster analysis
-svg("cluster_land.svg", width = 8, height = 4)
-par(mfrow=c(1,3))
-for(i in unique(data$taxon)){
-  plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == i) %>% 
-                        mutate(
-                          Landscape_type = paste(
-                            ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
-                            "\n",
-                            ifelse(`Road density` == 'Low', "Low road density", "High road density"))
-                        ) %>% filter(!Transect_type %in% "Powerline") %>% 
-                        group_by(Landscape_type, Species) %>% summarise(n = sum(Indiv)) %>%
-                        pivot_wider(names_from = Species, values_from  = n, values_fill = 0) %>% 
-                        ungroup %>%
-                        column_to_rownames("Landscape_type")),
-              method="single"),
-       main = i,
-       ylab = "", 
-       sub=NA, xlab = NA, cex = 1.3, cex.main = 1.5, axes = F)
-}
-dev.off()
-
-# beta-diversity
-beta.land <- c()
-for(i in unique(data$taxon)){
-  for(j in unique(data$Landscape)){
-    data_bet.temp <- data %>% ungroup %>%
-      mutate(
-        Landscape_type = paste(
-          ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
-          "/",
-          ifelse(`Road density` == 'Low', "Low road density", "High road density"))
-      ) %>% filter(taxon == i, Landscape == j, !Transect_type %in% "Powerline") %>% 
-      mutate(Indiv = ifelse(Indiv > 0, 1, 0)) %>% 
-      pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
-      select(-c(1:6)) %>% 
-      beta.multi(.)
-    
-    beta.temp <- bind_rows(data_bet.temp, .id = "Type") %>% 
-      mutate(taxon = i, Landscape = j) %>% 
-      pivot_longer(cols = 1:3, names_to = "Type", values_to = "beta") %>% 
-      left_join(data %>% select(2,3,4) %>% group_by(Landscape) %>% summarise_all(unique))
-    beta.land <- rbind.data.frame(beta.land, beta.temp)
-  }
-}
-
-# plot of beta-diversity by landscape type
-beta.labs <- c("Turnover (beta.SIM)", "Nestedness (beta.SNE)", "Total (beta.SOR)")
-names(beta.labs) <- c("beta.SIM", "beta.SNE", "beta.SOR")
-
-plot.land.beta <- beta.land %>%
-  mutate(Type = factor(Type, levels = c("beta.SOR", "beta.SIM", "beta.SNE"))) %>% 
-  ggplot(aes(y = beta, x = Powerline, fill = `Road density`)) + 
-  geom_boxplot() +
-  facet_grid(Type~taxon, scales = "free", 
-             labeller = labeller(Type = beta.labs)) +
-  scale_x_discrete("Presence of powerline") + 
-  scale_y_continuous("Beta-diversity among all transects in each landscape type\n(Based on Sorensen dissimilarity)") + 
-  theme_minimal() +
-  theme(legend.position = c(.9,.2),
-        legend.background = element_blank(),
-        legend.box.background = element_rect(colour = "black"))
-
-ggsave2("plot.land.beta.svg", plot.land.beta, width = 6.5, height = 5.5)
+# # ============================================ #
+# #   Analyses at the scale of landscape types   #
+# # ============================================ #
+# # remember to exclude powerline habitats for comparison 
+# 
+# ## gamma-diversity ##
+# # species richness
+# dat.SR.land.gamma <- data %>% filter(!Transect_type %in% "Powerline") %>% 
+#   select(taxon, `Road density`, Powerline, Species, Indiv) %>% 
+#   group_by(taxon, `Road density`, Powerline) %>% 
+#   summarise(S = length(unique(Species)))
+# 
+# dat.SR.land.gamma %>% ungroup %>% 
+#   mutate(
+#     Landscape_type = paste(
+#       ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
+#       "/",
+#       ifelse(`Road density` == 'Low', "Low road density", "High road density"))
+#   ) %>%  select(1,4, 5) %>% 
+#   pivot_wider(names_from = Landscape_type, values_from = S) %>%
+#   kable(format = "pipe")
+# 
+# plot.SR.land.gamma <- dat.SR.land.gamma %>%
+#   ungroup %>%
+#   ggplot(aes(x = Powerline, y = S, color = `Road density`)) + 
+#   geom_point(size = 3) + 
+#   geom_line(aes(group = `Road density`)) + 
+#   facet_grid(~taxon) +
+#   scale_x_discrete("Presence of powerline") + 
+#   scale_y_continuous("Total species richness") + 
+#   theme_minimal() + 
+#   theme(legend.position = c(.9,.2),
+#         legend.background = element_blank(),
+#         legend.box.background = element_rect(colour = "black"))
+# 
+# ggsave2("plot.SR.land.gamma.svg", plot.SR.land.gamma, width = 7, height = 4)
+# 
+# # Shannon index
+# dat.shannon.land.gamma <- data %>% filter(!Transect_type %in% "Powerline") %>%
+#   select(taxon, `Road density`, Powerline, Species, Indiv) %>% 
+#   group_by(taxon, `Road density`, Powerline) %>% 
+#   summarise(shannon = diversity(Indiv))
+# 
+# dat.shannon.land.gamma %>% ungroup %>% 
+#   mutate(
+#     Landscape_type = paste(
+#       ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
+#       "/",
+#       ifelse(`Road density` == 'Low', "Low road density", "High road density"))
+#   ) %>%  select(1,4, 5) %>% 
+#   pivot_wider(names_from = Landscape_type, values_from = shannon) %>%
+#   kable(format = "pipe", digits = 2)
+# 
+# plot.sh.land.gamma <- dat.shannon.land.gamma %>%
+#   ungroup %>%
+#   ggplot(aes(x = Powerline, y = shannon, color = `Road density`)) + 
+#   geom_point(size = 3) + 
+#   geom_line(aes(group = `Road density`)) + 
+#   facet_grid(~taxon) +
+#   scale_x_discrete("Presence of powerline") + 
+#   scale_y_continuous("Total species diversity (Shannon index)") + 
+#   theme_minimal() + 
+#   theme(legend.position = c(.9,.2),
+#         legend.background = element_blank(),
+#         legend.box.background = element_rect(colour = "black"))
+# 
+# ggsave2("plot.sh.land.gamma.svg", plot.sh.land.gamma, width = 7, height = 4)
+# 
+# ## alpha-diversity ##
+# # species richness
+# dat.SR.land.alpha <- data %>% filter(!Transect_type %in% "Powerline") %>% 
+#   select(taxon, Landscape, `Road density`, Powerline, Species, Indiv) %>% 
+#   group_by(taxon, Landscape) %>% 
+#   summarise(S = length(unique(Species)), 
+#             `Road density` = unique(`Road density`), 
+#             Powerline = unique(Powerline))
+# 
+# dat.SR.land.alpha %>% 
+#   group_by(taxon, Powerline, `Road density`) %>% 
+#   summarise(S.mean = mean(S), S.SD = sd(S)) %>% 
+#   kable(format = "pipe", digits = 2)
+# 
+# plot.SR.land.alpha <- dat.SR.land.alpha %>%
+#   ggplot(aes(x = Powerline, y = S, fill = `Road density`)) + 
+#   geom_boxplot() + 
+#   facet_grid(~taxon) +
+#   scale_x_discrete("Presence of powerline") + 
+#   scale_y_continuous("Species richness per transect") + 
+#   theme_minimal() +
+#   theme(legend.position = c(.9,.2),
+#         legend.background = element_blank(),
+#         legend.box.background = element_rect(colour = "black"))
+# 
+# ggsave2("plot.SR.land.alpha.svg", plot.SR.land.alpha, width = 7, height = 4)
+# 
+# # Shannon index
+# dat.shannon.land.alpha <- data %>% filter(!Transect_type %in% "Powerline") %>%
+#   select(taxon, Landscape, `Road density`, Powerline, Species, Indiv) %>% 
+#   group_by(taxon, Landscape, `Road density`, Powerline) %>% 
+#   summarise(shannon = diversity(Indiv))
+# 
+# dat.shannon.land.alpha %>% 
+#   group_by(taxon, Powerline, `Road density`) %>% 
+#   summarise(shannon.mean = mean(shannon), shannon.sd = sd(shannon)) %>% 
+#   kable(format = "pipe", digits = 2)
+# 
+# plot.sh.land.alpha <- dat.shannon.land.alpha %>%
+#   ggplot(aes(x = Powerline, y = shannon, fill = `Road density`)) + 
+#   geom_boxplot() + 
+#   facet_grid(~taxon) +
+#   scale_x_discrete("Presence of powerline") + 
+#   scale_y_continuous("Species diversity per transect\n(Shannon index)") + 
+#   theme_minimal() +
+#   theme(legend.position = c(.9,.2),
+#         legend.background = element_blank(),
+#         legend.box.background = element_rect(colour = "black"))
+# 
+# ggsave2("plot.sh.land.alpha.svg", plot.sh.land.alpha, width = 7, height = 4)
+# 
+# ## differences btw. landscapes, a.k.a. beta-diversity ##
+# 
+# # visualization via NMDS
+# ndms.plots.land <- c()
+# for(i in unique(data$taxon)){
+#   data.nmds <- data %>% filter(taxon == i, !Transect_type %in% "Powerline") %>% 
+#     select(taxon, Landscape, Transect_type, Powerline, `Road density`, Species, Indiv) %>% 
+#     pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0)
+#   
+#   nmds <- metaMDS(data.nmds[,-c(1:5)], trymax = 1000, maxit = 20000)
+#   
+#   # plot #
+#   # prepare scores
+#   nmds.scores <- as.data.frame(scores(nmds))
+#   nmds.scores$site <- rownames(nmds.scores)
+#   nmds.scores$landscape <- paste(ifelse(data.nmds$Powerline == "Yes", "Powerline", "No powerline"), 
+#                                  "/",
+#                                  ifelse(data.nmds$`Road density` == 'Low', "Low road density", "High road density"))
+#   
+#   # create hull polygons
+#   
+#   # landscape
+#   landscape.1 <- nmds.scores[nmds.scores$landscape == 
+#                                "Powerline / Low road density", ][chull(nmds.scores[nmds.scores$landscape == 
+#                                                                                      "Powerline / Low road density", c("NMDS1", "NMDS2")]), ] 
+#   landscape.2 <- nmds.scores[nmds.scores$landscape == 
+#                                "Powerline / High road density", ][chull(nmds.scores[nmds.scores$landscape == 
+#                                                                                       "Powerline / High road density", c("NMDS1", "NMDS2")]), ] 
+#   landscape.3 <- nmds.scores[nmds.scores$landscape == 
+#                                "No powerline / Low road density", ][chull(nmds.scores[nmds.scores$landscape == 
+#                                                                                         "No powerline / Low road density", c("NMDS1", "NMDS2")]), ] 
+#   landscape.4 <- nmds.scores[nmds.scores$landscape == 
+#                                "No powerline / High road density", ][chull(nmds.scores[nmds.scores$landscape == 
+#                                                                                          "No powerline / High road density", c("NMDS1", "NMDS2")]), ] 
+#   hull.landscape <- rbind(landscape.1, landscape.2) 
+#   hull.landscape <- rbind(hull.landscape, landscape.3) 
+#   hull.landscape <- rbind(hull.landscape, landscape.4) 
+#   
+#   ndms.plots.land <- rbind.data.frame(
+#     ndms.plots.land, 
+#     cbind.data.frame(
+#       taxon = i,
+#       rbind.data.frame(
+#         cbind.data.frame(what = "hull.landscape", hull.landscape),
+#         cbind.data.frame(what = "scores", nmds.scores)
+#       )
+#     )
+#   )
+# }
+# 
+# p.land <- ggplot() + 
+#   geom_polygon(data=ndms.plots.land[ndms.plots.land$what == "hull.landscape",],
+#                aes(x=NMDS1,y=NMDS2,fill=landscape ,group=landscape ),alpha=0.25) + # add the convex hulls
+#   geom_point(data=ndms.plots.land[ndms.plots.land$what == "scores",],
+#              aes(x=NMDS1,y=NMDS2,shape=landscape,colour=landscape),size=1) + # add the point markers
+#   facet_grid(~ taxon) +
+#   coord_equal() +
+#   scale_color_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
+#   scale_fill_manual("Landscape type", values = c("#8B2323", "#FFB90F", "#1E90FF", "#698B22")) +
+#   scale_shape_discrete("Landscape type") +
+#   theme_minimal()
+# 
+# ggsave2("p.land.svg", p.land, width = 10)
+# 
+# # PERMANOVA to test if species composition varies by landscape type 
+# for(i in unique(data$taxon)){
+#   data.temp <- data %>% filter(taxon == i, !Transect_type %in% "Powerline") %>% 
+#     select(taxon, Landscape, Powerline, Transect_type, `Road density`, Species, Indiv) %>% 
+#     pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0)
+#   
+#   a <- adonis(data.temp[,-c(1:5)] ~ Powerline + `Road density` + Landscape + Transect_type,
+#               data = data.temp,
+#               permutations = 999)
+#   
+#   cat("\n#==============#\n")
+#   cat(paste("  ", i, "\n"))
+#   cat("#==============#\n")
+#   print(a)
+#   
+# }
+# 
+# # cluster analysis
+# svg("cluster_land.svg", width = 8, height = 4)
+# par(mfrow=c(1,3))
+# for(i in unique(data$taxon)){
+#   plot(hclust(vegdist(data %>% ungroup %>% filter(taxon == i) %>% 
+#                         mutate(
+#                           Landscape_type = paste(
+#                             ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
+#                             "\n",
+#                             ifelse(`Road density` == 'Low', "Low road density", "High road density"))
+#                         ) %>% filter(!Transect_type %in% "Powerline") %>% 
+#                         group_by(Landscape_type, Species) %>% summarise(n = sum(Indiv)) %>%
+#                         pivot_wider(names_from = Species, values_from  = n, values_fill = 0) %>% 
+#                         ungroup %>%
+#                         column_to_rownames("Landscape_type")),
+#               method="single"),
+#        main = i,
+#        ylab = "", 
+#        sub=NA, xlab = NA, cex = 1.3, cex.main = 1.5, axes = F)
+# }
+# dev.off()
+# 
+# # beta-diversity
+# beta.land <- c()
+# for(i in unique(data$taxon)){
+#   for(j in unique(data$Landscape)){
+#     data_bet.temp <- data %>% ungroup %>%
+#       mutate(
+#         Landscape_type = paste(
+#           ifelse(Powerline == "Yes", "Powerline", "No powerline"), 
+#           "/",
+#           ifelse(`Road density` == 'Low', "Low road density", "High road density"))
+#       ) %>% filter(taxon == i, Landscape == j, !Transect_type %in% "Powerline") %>% 
+#       mutate(Indiv = ifelse(Indiv > 0, 1, 0)) %>% 
+#       pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
+#       select(-c(1:6)) %>% 
+#       beta.multi(.)
+#     
+#     beta.temp <- bind_rows(data_bet.temp, .id = "Type") %>% 
+#       mutate(taxon = i, Landscape = j) %>% 
+#       pivot_longer(cols = 1:3, names_to = "Type", values_to = "beta") %>% 
+#       left_join(data %>% select(2,3,4) %>% group_by(Landscape) %>% summarise_all(unique))
+#     beta.land <- rbind.data.frame(beta.land, beta.temp)
+#   }
+# }
+# 
+# # plot of beta-diversity by landscape type
+# beta.labs <- c("Turnover (beta.SIM)", "Nestedness (beta.SNE)", "Total (beta.SOR)")
+# names(beta.labs) <- c("beta.SIM", "beta.SNE", "beta.SOR")
+# 
+# plot.land.beta <- beta.land %>%
+#   mutate(Type = factor(Type, levels = c("beta.SOR", "beta.SIM", "beta.SNE"))) %>% 
+#   ggplot(aes(y = beta, x = Powerline, fill = `Road density`)) + 
+#   geom_boxplot() +
+#   facet_grid(Type~taxon, scales = "free", 
+#              labeller = labeller(Type = beta.labs)) +
+#   scale_x_discrete("Presence of powerline") + 
+#   scale_y_continuous("Beta-diversity among all transects in each landscape type\n(Based on Sorensen dissimilarity)") + 
+#   theme_minimal() +
+#   theme(legend.position = c(.9,.2),
+#         legend.background = element_blank(),
+#         legend.box.background = element_rect(colour = "black"))
+# 
+# ggsave2("plot.land.beta.svg", plot.land.beta, width = 6.5, height = 5.5)
 
 #######################
 ## clean environment ##
