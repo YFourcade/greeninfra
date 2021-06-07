@@ -386,6 +386,8 @@ for(i in unique(data$taxon)){
                                    )
     )
   }
+  a.pair.res$adj.P <- p.adjust(a.pair.res$P)
+  
   
   aic_res <- rbind.data.frame(
     aic_res,
