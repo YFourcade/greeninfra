@@ -358,7 +358,7 @@ for(i in unique(data$taxon)){
                 Transect_type + PL + RD + scale(TUVA), 
               strata= data.temp$Landscape,
               data = data.temp,
-              permutations = 999)
+              permutations = 9999)
   a1 <- update(a, ~ .+ PL:RD)
   a2 <- update(a, ~ .+ scale(TUVA):RD)
   a3 <- update(a, ~ .+ Transect_type:scale(TUVA))
@@ -378,7 +378,7 @@ for(i in unique(data$taxon)){
                        Transect_type + PL + RD + scale(TUVA), 
                      strata = data.temp.pair$Landscape,
                      data = data.temp.pair,
-                     permutations = 999)
+                     permutations = 9999)
     
     a.pair.res <- rbind.data.frame(a.pair.res,
                                    cbind.data.frame(
@@ -386,6 +386,8 @@ for(i in unique(data$taxon)){
                                    )
     )
   }
+  a.pair.res$adj.P <- p.adjust(a.pair.res$P)
+  
   
   aic_res <- rbind.data.frame(
     aic_res,
@@ -428,9 +430,9 @@ aic_res <- aic_res %>%
   group_by(Taxon) %>% 
   mutate(delta = qpcR::akaike.weights(AICc)$deltaAIC)
 
-res_perm_alpha_hab2 %>% kable(format = "pipe", digits = 3)
-aic_res %>% kable(format = "pipe", digits = 3)
-pairwise_permanova %>% kable(format = "pipe", digits = 3)
+res_perm_alpha_hab2 %>% kable(format = "pipe", digits = 4)
+aic_res %>% kable(format = "pipe", digits = 4)
+pairwise_permanova %>% kable(format = "pipe", digits = 4)
 
 
 
