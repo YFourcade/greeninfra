@@ -5,6 +5,7 @@ library(betapart)
 library(lmerTest)
 library(cowplot)
 library(knitr)
+library(pairwiseAdonis)
 
 source("AICc_PERMANOVA.R")
 
@@ -341,7 +342,13 @@ res_perm_alpha_hab %>% kable(format = "pipe", digits = 2)
 # PERMANOVA to test if species composition varies by habitat type, landscape type, landscape diversity and amount of open habitat
 res_perm_alpha_hab2 <- c()
 aic_res <- c()
+pairwise_permanova <- c()
 for(i in unique(data$taxon)){
+  
+  cat("\n#==============#\n")
+  cat(paste("  ", i, "\n"))
+  cat("#==============#\n")
+  
   data.temp <- data %>% filter(taxon == i) %>% 
     select(taxon, Landscape, Transect_type, Species, Indiv) %>% 
     pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
@@ -358,6 +365,27 @@ for(i in unique(data$taxon)){
   a4 <- update(a, ~ .+ Transect_type:RD)
   a5 <- update(a, ~ .+ Transect_type:PL)
   a6 <- update(a, ~ .+ scale(TUVA):PL)
+  
+  co <- combn(unique(data.temp$Transect_type), 2)
+  
+  a.pair.res <- c()
+  for(j in 1:ncol(co)){
+    data.temp.pair <- data %>% filter(taxon == i, Transect_type %in% co[,j]) %>% 
+      select(taxon, Landscape, Transect_type, Species, Indiv) %>% 
+      pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
+      left_join(site_data)
+    a.pair <- adonis(data.temp.pair[,4:(grep("Category", names(data.temp.pair))-1)] ~ 
+                       Transect_type + PL + RD + scale(TUVA), 
+                     strata = data.temp.pair$Landscape,
+                     data = data.temp.pair,
+                     permutations = 999)
+    
+    a.pair.res <- rbind.data.frame(a.pair.res,
+                                   cbind.data.frame(
+                                     Taxon = i, Hab_1 = co[1,j], Hab_1 = co[2,j], P = a.pair$aov.tab[1,6]
+                                   )
+    )
+  }
   
   aic_res <- rbind.data.frame(
     aic_res,
@@ -382,9 +410,6 @@ for(i in unique(data$taxon)){
   # 
   # anova.cca(b, by = 'margin')
   
-  cat("\n#==============#\n")
-  cat(paste("  ", i, "\n"))
-  cat("#==============#\n")
   res_perm_alpha_hab2 <- rbind.data.frame(
     res_perm_alpha_hab2, 
     cbind.data.frame(
@@ -392,6 +417,12 @@ for(i in unique(data$taxon)){
       as.data.frame(a$aov.tab) %>% rownames_to_column("Variables")
     )
   )
+  
+  pairwise_permanova <- rbind.data.frame(
+    pairwise_permanova,
+    a.pair.res
+  )
+  
 }
 aic_res <- aic_res %>% 
   group_by(Taxon) %>% 
@@ -399,6 +430,7 @@ aic_res <- aic_res %>%
 
 res_perm_alpha_hab2 %>% kable(format = "pipe", digits = 3)
 aic_res %>% kable(format = "pipe", digits = 3)
+pairwise_permanova %>% kable(format = "pipe", digits = 3)
 
 
 
