@@ -224,6 +224,7 @@ res_aov_alpha_hab_sh2 %>% kable(format = "pipe", digits = 2)
 
 # visualization via NMDS
 ndms.plots.hab <- c()
+ndms.plots.sp <- c()
 for(i in unique(data$taxon)){
   data.nmds <- data %>% filter(taxon == i) %>% 
     select(taxon, Landscape, Transect_type, Species, Indiv) %>% 
@@ -239,6 +240,8 @@ for(i in unique(data$taxon)){
   nmds.scores$habitat <- factor(data.nmds$Transect_type, levels = trans_type)
   nmds.scores$RD <- data.nmds$RD
   nmds.scores$TUVA <- data.nmds$TUVA
+  nmds.species.scores <- scores(nmds, display = "species")
+  
   
   # create hull polygons
   
@@ -282,6 +285,12 @@ for(i in unique(data$taxon)){
                                                       )
                                      )
   )
+  
+  ndms.plots.sp <- rbind.data.frame(ndms.plots.sp,
+                                    cbind.data.frame(taxon = i,
+                                                     Species = rownames(nmds.species.scores),
+                                                     nmds.species.scores)
+  )
 }
 
 p.hab <- ggplot() + 
@@ -290,6 +299,8 @@ p.hab <- ggplot() +
   # geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
   geom_point(data=ndms.plots.hab[ndms.plots.hab$what == "scores",],
              aes(x=NMDS1,y=NMDS2,shape=habitat,colour=habitat),size=1) + # add the point markers
+  # geom_text(data=ndms.plots.sp,
+  #            aes(x=NMDS1,y=NMDS2, label = Species),size=1) + # add the species scores
   facet_grid(~ taxon) +
   coord_equal() +
   scale_color_discrete("Habitat type") +
