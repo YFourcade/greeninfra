@@ -11,6 +11,9 @@ source("AICc_PERMANOVA.R")
 
 ### import data ###
 site_data <- read.csv2("../Data/database.PD.taxalabels.csv")
+coords <- read_csv2("../Data/Centroid_coords.csv") %>% 
+  mutate(Transect_type = ifelse(Transect_type == "Field border", "Between fields", Transect_type),
+         Transect_type = ifelse(Transect_type == "Power line", "Powerline", Transect_type))
 
 data_BB <- read_csv2("../Data/bb.tidy.csv")
 data_But <- read_csv2("../Data/bf.tidy.csv")
@@ -140,12 +143,13 @@ ggsave2("plot.sh.hab.alpha.svg", plot.sh.hab.alpha, width = 7, height = 4)
 
 res_aov_alpha_hab <- c()
 for(i in unique(data$taxon)){
-  m <- lmer(S ~ Transect_type + (1|Landscape),
-            data = dat.SR.alpha  %>% filter(taxon == i) %>% left_join(site_data))
-  
   cat("\n#==============#\n")
   cat(paste("  ", i, "\n"))
   cat("#==============#\n")
+  
+  m <- lmer(S ~ Transect_type + (1|Landscape),
+            data = dat.SR.alpha  %>% filter(taxon == i) %>% left_join(site_data))
+  
   res_aov_alpha_hab <- rbind.data.frame(res_aov_alpha_hab, 
                                         cbind.data.frame(Taxon = i, anova(m)))
   
@@ -155,19 +159,32 @@ res_aov_alpha_hab %>% kable(format = "pipe", digits = 2)
 
 
 # differences btw. habitat types in interaction with habitat type and presence of powerlines and roads
+library(ncf)
+
+svg(paste("Autocorrelation_alpha_diversity.svg"), width = 12, height = 4.5, pointsize = 18)
+par(mfrow=c(1,3))
+
 res_aov_alpha_hab_2 <- c()
 for(i in unique(data$taxon)){
+  cat("\n#==============#\n")
+  cat(paste("  ", i, "\n"))
+  cat("#==============#\n")
+  
   data.temp <- dat.SR.alpha  %>% filter(taxon == i) %>% 
     left_join(site_data) %>% 
     left_join(site_data %>% pivot_longer(cols = c(10:20), names_to = "type", values_to = "proportion") %>% 
                 group_by(Landscape) %>% summarise(div.land = diversity(proportion)))
-  m <- lmer(S ~ Transect_type + Open_areas + div.land + 
-              PL * RD + (1|Landscape),
+  m <- lmer(S ~ Transect_type + Open_areas + 
+              PL + RD + (1|Landscape),
             data = data.temp)
   
-  cat("\n#==============#\n")
-  cat(paste("  ", i, "\n"))
-  cat("#==============#\n")
+  sp.corel <- spline.correlog(
+    x = dat.SR.alpha  %>% filter(taxon == i) %>% left_join(coords) %>% pull(lng),
+    y = dat.SR.alpha  %>% filter(taxon == i) %>% left_join(coords) %>% pull(lat),
+    z = resid(m), latlon = T
+  )
+  plot(sp.corel, main = i)
+  
   
   res_aov_alpha_hab_2 <- rbind.data.frame(
     res_aov_alpha_hab_2, 
@@ -177,8 +194,11 @@ for(i in unique(data$taxon)){
     )
   )
 }
+dev.off() 
+par(mfrow=c(1,1))
 
-res_aov_alpha_hab_2 %>% select(-1) %>% kable(format = "pipe", digits = 2)
+
+res_aov_alpha_hab_2 %>% kable(format = "pipe", digits = 2)
 
 # Shannon diversity
 # differences btw. habitat types only
@@ -221,6 +241,31 @@ for(i in unique(data$taxon)){
 res_aov_alpha_hab_sh2 %>% kable(format = "pipe", digits = 2)
 
 ## differences btw. habitat types, a.k.a. beta-diversity ##
+# test spatial autocorrelation in community composition
+
+svg(paste("Autocorrelation_beta_diversity.svg"), width = 12, height = 4.5, pointsize = 18)
+par(mfrow=c(1,3))
+
+for(i in unique(data$taxon)){
+  
+  data.temp <- data %>% filter(taxon == i) %>% 
+    select(taxon, Landscape, Transect_type, Species, Indiv) %>% 
+    pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0)
+  
+  distance <- bray.part(data.temp[,-c(1:3)])$bray
+  
+  sp.corel <- spline.correlog(resamp = 10,
+                              x = data.temp  %>% filter(taxon == i) %>% left_join(coords) %>% pull(lng),
+                              y = data.temp  %>% filter(taxon == i) %>% left_join(coords) %>% pull(lat),
+                              z = as.matrix(distance), latlon = T
+  )
+  plot(sp.corel, main = i)
+  
+}
+
+dev.off() 
+par(mfrow=c(1,1))
+
 
 # visualization via NMDS
 ndms.plots.hab <- c()
@@ -231,11 +276,29 @@ for(i in unique(data$taxon)){
     pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
     left_join(site_data)
   
-  nmds <- metaMDS(data.nmds[,-c(1:3, (ncol(data.nmds)-19):ncol(data.nmds))], trymax = 1000, maxit = 20000)
+  data.nmds[,-c(1:3, (ncol(data.nmds)-19):ncol(data.nmds))] %>% 
+    apply(., 2, sum) %>% 
+    as.data.frame() %>% 
+    rownames_to_column("Species") %>% 
+    rename(n = ".") %>% 
+    ggplot(aes(x = reorder(Species, n, decreasing  = T), y = n)) +
+    geom_point() +
+    geom_line(group = 1) +
+    scale_x_discrete("") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+  
+  
+  nmds <- metaMDS(data.nmds[,-c(1:3, (ncol(data.nmds)-19):ncol(data.nmds))], 
+                  maxit = 20000,
+                  maxtry = 100,
+                  k= 3,
+                  trace = 0)
+  print(nmds$stress)
   
   # plot #
   # prepare scores
-  nmds.scores <- as.data.frame(scores(nmds))
+  nmds.scores <- as.data.frame(scores(nmds)$sites)
   nmds.scores$site <- rownames(nmds.scores)
   nmds.scores$habitat <- factor(data.nmds$Transect_type, levels = trans_type)
   nmds.scores$RD <- data.nmds$RD
@@ -293,22 +356,166 @@ for(i in unique(data$taxon)){
   )
 }
 
-p.hab <- ggplot() + 
-  geom_polygon(data=ndms.plots.hab[ndms.plots.hab$what == "hull.habitat",],
-               aes(x=NMDS1,y=NMDS2,fill=habitat ,group=habitat ),alpha=0.25) + # add the convex hulls
-  # geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
-  geom_point(data=ndms.plots.hab[ndms.plots.hab$what == "scores",],
-             aes(x=NMDS1,y=NMDS2,shape=habitat,colour=habitat),size=1) + # add the point markers
-  # geom_text(data=ndms.plots.sp,
-  #            aes(x=NMDS1,y=NMDS2, label = Species),size=1) + # add the species scores
-  facet_grid(~ taxon) +
-  coord_equal() +
-  scale_color_discrete("Habitat type") +
-  scale_fill_discrete("Habitat type") +
-  scale_shape_discrete("Habitat type") +
-  theme_minimal() 
 
-ggsave2("p.hab.svg", p.hab, width = 10)
+library(patchwork)
+library(ggalt)
+library(ggh4x)
+p1 <- ggplot(
+  data = 
+    bind_rows(
+      ndms.plots.hab %>% filter(taxon == "Bumblebees", what == "scores") %>% 
+        select(NMDS1,NMDS2, habitat) %>% 
+        rename(x = NMDS2, y = NMDS1) %>% 
+        mutate(Axis_x = "NMDS2", Axis_y = "NMDS1"),
+      ndms.plots.hab %>% filter(taxon == "Bumblebees", what == "scores") %>% 
+        select(NMDS1,NMDS3, habitat) %>% 
+        rename(x = NMDS3, y = NMDS1) %>% 
+        mutate(Axis_x = "NMDS3", Axis_y = "NMDS1"),
+      ndms.plots.hab %>% filter(taxon == "Bumblebees", what == "scores") %>% 
+        select(NMDS3,NMDS2, habitat) %>% 
+        rename(x = NMDS3, y = NMDS2) %>% 
+        mutate(Axis_x = "NMDS3", Axis_y = "NMDS2")
+    ),
+  aes(x=x,y=y,shape=habitat,colour=habitat)
+) +
+  geom_point() +
+  geom_encircle(
+    aes(fill = habitat),
+    alpha=0.25,
+    s_shape = 1,
+    expand = 0,
+    spread = 0
+  ) +
+  facet_manual(
+    Axis_x~Axis_y,  
+    design = matrix(c(1,NA,2,3), ncol = 2), 
+    respect = T, 
+    axes = "all",
+    strip = strip_split(
+      position = c("bottom", "left"),
+      text_y = list(element_text(),element_text(color = "white"))
+    )
+  ) +
+  theme_classic() +
+  scale_y_continuous("") + 
+  scale_x_continuous("") +
+  theme(legend.position = c(.2, .2),
+        legend.title= element_blank(),
+        panel.background = element_rect(colour = 'black'),
+        strip.background = element_blank(),
+        strip.placement = "outside") +
+  ggtitle("Bumblebees")
+
+p2 <- ggplot(
+  data = 
+    bind_rows(
+      ndms.plots.hab %>% filter(taxon == "Butterflies", what == "scores") %>% 
+        select(NMDS1,NMDS2, habitat) %>% 
+        rename(x = NMDS2, y = NMDS1) %>% 
+        mutate(Axis_x = "NMDS2", Axis_y = "NMDS1"),
+      ndms.plots.hab %>% filter(taxon == "Butterflies", what == "scores") %>% 
+        select(NMDS1,NMDS3, habitat) %>% 
+        rename(x = NMDS3, y = NMDS1) %>% 
+        mutate(Axis_x = "NMDS3", Axis_y = "NMDS1"),
+      ndms.plots.hab %>% filter(taxon == "Butterflies", what == "scores") %>% 
+        select(NMDS3,NMDS2, habitat) %>% 
+        rename(x = NMDS3, y = NMDS2) %>% 
+        mutate(Axis_x = "NMDS3", Axis_y = "NMDS2")
+    ),
+  aes(x=x,y=y,shape=habitat,colour=habitat)
+) +
+  geom_point() +
+  geom_encircle(
+    aes(fill = habitat),
+    alpha=0.25,
+    s_shape = 1,
+    expand = 0,
+    spread = 0
+  ) +
+  facet_manual(
+    Axis_x~Axis_y,  
+    design = matrix(c(1,NA,2,3), ncol = 2), 
+    respect = T, 
+    axes = "all",
+    strip = strip_split(
+      position = c("bottom", "left"),
+      text_y = list(element_text(),element_text(color = "white"))
+    )
+  ) +
+  theme_classic() +
+  scale_y_continuous("") + 
+  scale_x_continuous("") +
+  theme(legend.position = "none",
+        legend.title= element_blank(),
+        panel.background = element_rect(colour = 'black'),
+        strip.background = element_blank(),
+        strip.placement = "outside") +
+  ggtitle("Butterflies")
+
+p3 <- ggplot(
+  data = 
+    bind_rows(
+      ndms.plots.hab %>% filter(taxon == "Plants", what == "scores") %>% 
+        select(NMDS1,NMDS2, habitat) %>% 
+        rename(x = NMDS2, y = NMDS1) %>% 
+        mutate(Axis_x = "NMDS2", Axis_y = "NMDS1"),
+      ndms.plots.hab %>% filter(taxon == "Plants", what == "scores") %>% 
+        select(NMDS1,NMDS3, habitat) %>% 
+        rename(x = NMDS3, y = NMDS1) %>% 
+        mutate(Axis_x = "NMDS3", Axis_y = "NMDS1"),
+      ndms.plots.hab %>% filter(taxon == "Plants", what == "scores") %>% 
+        select(NMDS3,NMDS2, habitat) %>% 
+        rename(x = NMDS3, y = NMDS2) %>% 
+        mutate(Axis_x = "NMDS3", Axis_y = "NMDS2")
+    ),
+  aes(x=x,y=y,shape=habitat,colour=habitat)
+) +
+  geom_point() +
+  geom_encircle(
+    aes(fill = habitat),
+    alpha=0.25,
+    s_shape = 1,
+    expand = 0,
+    spread = 0
+  ) +
+  facet_manual(
+    Axis_x~Axis_y,  
+    design = matrix(c(1,NA,2,3), ncol = 2), 
+    respect = T, 
+    axes = "all",
+    strip = strip_split(
+      position = c("bottom", "left"),
+      text_y = list(element_text(),element_text(color = "white"))
+    )
+  ) +
+  theme_classic() +
+  scale_y_continuous("") + 
+  scale_x_continuous("") +
+  theme(legend.position = "none",
+        legend.title= element_blank(),
+        panel.background = element_rect(colour = 'black'),
+        strip.background = element_blank(),
+        strip.placement = "outside") +
+  ggtitle("Plants")
+
+p.hab <- p1 + p2 + p3
+
+# p.hab <- ggplot() + 
+#   geom_polygon(data=ndms.plots.hab[ndms.plots.hab$what == "hull.habitat",],
+#                aes(x=NMDS1,y=NMDS2,fill=habitat ,group=habitat ),alpha=0.25) + # add the convex hulls
+#   # geom_text(data=species.scores,aes(x=NMDS1,y=NMDS2,label=species),alpha=0.5, size = 3.5) +  # add the species labels
+#   geom_point(data=ndms.plots.hab[ndms.plots.hab$what == "scores",],
+#              aes(x=NMDS1,y=NMDS2,shape=habitat,colour=habitat),size=1) + # add the point markers
+#   # geom_text(data=ndms.plots.sp,
+#   #            aes(x=NMDS1,y=NMDS2, label = Species),size=1) + # add the species scores
+#   facet_grid(~ taxon) +
+#   coord_equal() +
+#   scale_color_discrete("Habitat type") +
+#   scale_fill_discrete("Habitat type") +
+#   scale_shape_discrete("Habitat type") +
+#   theme_minimal() 
+
+ggsave2("p.hab_Rev.pdf", p.hab, width = 15, height = 6)
 
 p.env <- ggplot() + 
   geom_polygon(data=ndms.plots.hab[ndms.plots.hab$what == "hull.RD",] %>% 
@@ -335,7 +542,7 @@ for(i in unique(data$taxon)){
   
   a <- adonis(data.temp[,4:ncol(data.temp)] ~ Transect_type + Landscape,
               data = data.temp,
-              permutations = 999)
+              permutations = 99)
   
   cat("\n#==============#\n")
   cat(paste("  ", i, "\n"))
@@ -365,35 +572,64 @@ for(i in unique(data$taxon)){
     pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
     left_join(site_data)
   
-  a <- adonis(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
-                Transect_type + PL + RD + scale(TUVA), 
-              strata= data.temp$Landscape,
-              data = data.temp,
-              permutations = 9999)
-  a1 <- update(a, ~ .+ PL:RD)
-  a2 <- update(a, ~ .+ scale(TUVA):RD)
-  a3 <- update(a, ~ .+ Transect_type:scale(TUVA))
-  a4 <- update(a, ~ .+ Transect_type:RD)
-  a5 <- update(a, ~ .+ Transect_type:PL)
-  a6 <- update(a, ~ .+ scale(TUVA):PL)
+  a <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                 Transect_type + PL + RD + scale(TUVA), 
+               strata= data.temp$Landscape,
+               data = data.temp,
+               permutations = 9999)
+  a1 <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                  Transect_type + PL + RD + scale(TUVA) + PL:RD, 
+                strata= data.temp$Landscape,
+                data = data.temp,
+                permutations = 9999)
+  a2 <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                  Transect_type + PL + RD + scale(TUVA) + scale(TUVA):RD, 
+                strata= data.temp$Landscape,
+                data = data.temp,
+                permutations = 9999)
+  a3 <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                  Transect_type + PL + RD + scale(TUVA) + Transect_type:scale(TUVA), 
+                strata= data.temp$Landscape,
+                data = data.temp,
+                permutations = 9999)
+  a4 <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                  Transect_type + PL + RD + scale(TUVA) + Transect_type:RD, 
+                strata= data.temp$Landscape,
+                data = data.temp,
+                permutations = 9999)
+  a5 <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                  Transect_type + PL + RD + scale(TUVA) + Transect_type:PL, 
+                strata= data.temp$Landscape,
+                data = data.temp,
+                permutations = 9999)
+  a6 <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                  Transect_type + PL + RD + scale(TUVA) + scale(TUVA):PL, 
+                strata= data.temp$Landscape,
+                data = data.temp,
+                permutations = 9999)
+  anull <- adonis2(data.temp[,4:(grep("Category", names(data.temp))-1)] ~ 
+                     1, 
+                   strata= data.temp$Landscape,
+                   data = data.temp,
+                   permutations = 9999)
   
   co <- combn(unique(data.temp$Transect_type), 2)
   
   a.pair.res <- c()
   for(j in 1:ncol(co)){
-    data.temp.pair <- data %>% filter(taxon == i, Transect_type %in% co[,j]) %>% 
-      select(taxon, Landscape, Transect_type, Species, Indiv) %>% 
-      pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
+    data.temp.pair <- data %>% filter(taxon == i, Transect_type %in% co[,j]) %>%
+      select(taxon, Landscape, Transect_type, Species, Indiv) %>%
+      pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>%
       left_join(site_data)
-    a.pair <- adonis(data.temp.pair[,4:(grep("Category", names(data.temp.pair))-1)] ~ 
-                       Transect_type + PL + RD + scale(TUVA), 
-                     strata = data.temp.pair$Landscape,
-                     data = data.temp.pair,
-                     permutations = 9999)
+    a.pair <- adonis2(data.temp.pair[,4:(grep("Category", names(data.temp.pair))-1)] ~
+                        Transect_type + PL + RD + scale(TUVA),
+                      strata = data.temp.pair$Landscape,
+                      data = data.temp.pair,
+                      permutations = 9999)
     
     a.pair.res <- rbind.data.frame(a.pair.res,
                                    cbind.data.frame(
-                                     Taxon = i, Hab_1 = co[1,j], Hab_1 = co[2,j], P = a.pair$aov.tab[1,6]
+                                     Taxon = i, Hab_1 = co[1,j], Hab_1 = co[2,j], P = as.data.frame(a.pair)[1,5]
                                    )
     )
   }
@@ -410,9 +646,10 @@ for(i in unique(data$taxon)){
                 "interaction_Transect_type:TUVA",
                 "interaction_Transect_type:RD",
                 "interaction_Transect_type:PL",
-                "interaction_TUVA:PL"),
+                "interaction_TUVA:PL",
+                "null"),
       AICc = unlist(
-        lapply(list(a,a1,a2,a3,a5,a5,a6), function(x){AICc.PERMANOVA(x)$AICc})
+        lapply(list(a,a1,a2,a3,a5,a5,a6,anull), function(x){AICc.PERMANOVA2(x)$AICc})
       )
     )
   )
@@ -427,7 +664,7 @@ for(i in unique(data$taxon)){
     res_perm_alpha_hab2, 
     cbind.data.frame(
       Taxon = i,
-      as.data.frame(a$aov.tab) %>% rownames_to_column("Variables")
+      as.data.frame(a) %>% rownames_to_column("Variables")
     )
   )
   
@@ -469,7 +706,7 @@ for(i in unique(data$taxon)){
   for(j in unique(data$Transect_type)){
     data_bet.temp <- data %>% ungroup %>% filter(taxon == i, Transect_type == j) %>% mutate(Indiv = ifelse(Indiv > 0, 1, 0)) %>% 
       pivot_wider(names_from = Species, values_from = Indiv, values_fill = 0) %>% 
-      select(-c(1:10)) %>% 
+      select(-c(1:5)) %>% 
       beta.multi(.)
     
     beta.temp <- bind_rows(data_bet.temp, .id = "Type") %>% 
